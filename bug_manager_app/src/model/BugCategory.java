@@ -1,0 +1,5 @@
+package model;
+
+public enum BugCategory {
+    FUNCTIONAL, GRAPHICAL, PERFORMANCE, TECHNICAL, SECURITY, COMPATIBILITY
+}
