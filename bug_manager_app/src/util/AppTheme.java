@@ -8,30 +8,63 @@ import javax.swing.JLabel;
 import javax.swing.border.Border;
 
 /**
- * Centralised colour palette, fonts, and factory helpers for the Bug Tracker UI.
- * All UI classes pull constants from here so the look stays consistent.
+ * Global UI palette. Call AppTheme.apply(ThemeDefinition) to switch themes.
  */
 public final class AppTheme {
 
     private AppTheme() {}
 
-    // ── Palette ────────────────────────────────────────────────────────────────
-    public static final Color BG_DARK      = new Color(28,  30,  38);   // main window bg
-    public static final Color BG_PANEL     = new Color(36,  39,  50);   // card / panel bg
-    public static final Color BG_SIDEBAR   = new Color(22,  24,  32);   // left list bg
-    public static final Color BG_HEADER    = new Color(20,  22,  30);   // top bar
-    public static final Color ACCENT       = new Color(99, 132, 255);   // primary blue-purple
-    public static final Color ACCENT_HOVER = new Color(120, 150, 255);
-    public static final Color DANGER       = new Color(220,  60,  60);   // delete / error
-    public static final Color SUCCESS      = new Color( 60, 190, 100);   // success green
-    public static final Color WARNING      = new Color(230, 160,  30);   // warning amber
-    public static final Color TEXT_PRIMARY = new Color(220, 222, 235);
-    public static final Color TEXT_MUTED   = new Color(130, 135, 160);
-    public static final Color BORDER_COLOR = new Color( 50,  53,  68);
-    public static final Color TABLE_ALT    = new Color( 40,  43,  56);   // alternate row
-    public static final Color TABLE_SEL    = new Color( 60,  80, 160);   // selected row
+    // ── Active theme ───────────────────────────────────────────────────────────
+    private static ThemeDefinition currentTheme = ThemeDefinition.DARK();
 
-    // ── Fonts ───────────────────────────────────────────────────────────────────
+    public static ThemeDefinition getCurrentTheme() { return currentTheme; }
+
+    public static void apply(ThemeDefinition t) {
+        currentTheme = t;
+        BG_DARK      = t.bgDark;
+        BG_PANEL     = t.bgPanel;
+        BG_SIDEBAR   = t.bgSidebar;
+        BG_HEADER    = t.bgHeader;
+        ACCENT       = t.accent;
+        ACCENT_HOVER = t.accentHover;
+        DANGER       = t.danger;
+        SUCCESS      = t.success;
+        WARNING      = t.warning;
+        TEXT_PRIMARY = t.textPrimary;
+        TEXT_MUTED   = t.textMuted;
+        BORDER_COLOR = t.borderColor;
+        TABLE_ALT    = t.tableAlt;
+        TABLE_SEL    = t.tableSel;
+        refreshBorders();
+    }
+
+    // ── Palette (mutable) ──────────────────────────────────────────────────────
+    public static Color BG_DARK      = new Color(28,  30,  38);
+    public static Color BG_PANEL     = new Color(36,  39,  50);
+    public static Color BG_SIDEBAR   = new Color(22,  24,  32);
+    public static Color BG_HEADER    = new Color(20,  22,  30);
+    public static Color ACCENT       = new Color(99, 132, 255);
+    public static Color ACCENT_HOVER = new Color(120, 150, 255);
+    public static Color DANGER       = new Color(220,  60,  60);
+    public static Color SUCCESS      = new Color( 60, 190, 100);
+    public static Color WARNING      = new Color(230, 160,  30);
+    public static Color TEXT_PRIMARY = new Color(220, 222, 235);
+    public static Color TEXT_MUTED   = new Color(130, 135, 160);
+    public static Color BORDER_COLOR = new Color( 50,  53,  68);
+    public static Color TABLE_ALT    = new Color( 40,  43,  56);
+    public static Color TABLE_SEL    = new Color( 60,  80, 160);
+
+    // ── Borders ────────────────────────────────────────────────────────────────
+    public static Border BORDER_PANEL = BorderFactory.createLineBorder(BORDER_COLOR, 1);
+    public static Border PADDING_SM   = BorderFactory.createEmptyBorder(6,  10,  6, 10);
+    public static Border PADDING_MD   = BorderFactory.createEmptyBorder(12, 16, 12, 16);
+    public static Border PADDING_LG   = BorderFactory.createEmptyBorder(20, 24, 20, 24);
+
+    public static void refreshBorders() {
+        BORDER_PANEL = BorderFactory.createLineBorder(BORDER_COLOR, 1);
+    }
+
+    // ── Fonts ──────────────────────────────────────────────────────────────────
     public static final Font FONT_TITLE   = new Font("Segoe UI", Font.BOLD,  20);
     public static final Font FONT_HEADING = new Font("Segoe UI", Font.BOLD,  14);
     public static final Font FONT_BODY    = new Font("Segoe UI", Font.PLAIN, 13);
@@ -39,23 +72,15 @@ public final class AppTheme {
     public static final Font FONT_BUTTON  = new Font("Segoe UI", Font.BOLD,  12);
     public static final Font FONT_LABEL   = new Font("Segoe UI", Font.BOLD,  12);
 
-    // ── Borders ─────────────────────────────────────────────────────────────────
-    public static final Border BORDER_PANEL  = BorderFactory.createLineBorder(BORDER_COLOR, 1);
-    public static final Border PADDING_SM    = BorderFactory.createEmptyBorder(6,  10,  6, 10);
-    public static final Border PADDING_MD    = BorderFactory.createEmptyBorder(12, 16, 12, 16);
-    public static final Border PADDING_LG    = BorderFactory.createEmptyBorder(20, 24, 20, 24);
-
-    // ── Button factory ──────────────────────────────────────────────────────────
+    // ── Button / label factories ───────────────────────────────────────────────
     public static JButton primaryButton(String text) {
-        return styledButton(text, ACCENT, Color.WHITE);
+        return styledButton(text, ACCENT,    perceivedLight(ACCENT)  ? new Color(20,20,20) : java.awt.Color.WHITE);
     }
-
     public static JButton dangerButton(String text) {
-        return styledButton(text, DANGER, Color.WHITE);
+        return styledButton(text, DANGER,    java.awt.Color.WHITE);
     }
-
     public static JButton secondaryButton(String text) {
-        return styledButton(text, BG_PANEL, TEXT_PRIMARY);
+        return styledButton(text, BG_PANEL,  TEXT_PRIMARY);
     }
 
     private static JButton styledButton(String text, Color bg, Color fg) {
@@ -71,18 +96,27 @@ public final class AppTheme {
         return btn;
     }
 
-    // ── Label factory ───────────────────────────────────────────────────────────
     public static JLabel heading(String text) {
-        JLabel lbl = new JLabel(text);
-        lbl.setFont(FONT_HEADING);
-        lbl.setForeground(TEXT_PRIMARY);
-        return lbl;
+        JLabel l = new JLabel(text); l.setFont(FONT_HEADING); l.setForeground(TEXT_PRIMARY); return l;
+    }
+    public static JLabel muted(String text) {
+        JLabel l = new JLabel(text); l.setFont(FONT_SMALL); l.setForeground(TEXT_MUTED); return l;
     }
 
-    public static JLabel muted(String text) {
-        JLabel lbl = new JLabel(text);
-        lbl.setFont(FONT_SMALL);
-        lbl.setForeground(TEXT_MUTED);
-        return lbl;
+    // ── Utilities ──────────────────────────────────────────────────────────────
+    public static boolean perceivedLight(Color c) {
+        return (0.2126*c.getRed() + 0.7152*c.getGreen() + 0.0722*c.getBlue()) > 160;
+    }
+    public static String toHex(Color c) {
+        return String.format("#%02X%02X%02X", c.getRed(), c.getGreen(), c.getBlue());
+    }
+    public static Color fromHex(String hex, Color fallback) {
+        try {
+            String h = hex.startsWith("#") ? hex.substring(1) : hex;
+            return new Color(
+                Integer.parseInt(h.substring(0,2),16),
+                Integer.parseInt(h.substring(2,4),16),
+                Integer.parseInt(h.substring(4,6),16));
+        } catch (Exception e) { return fallback; }
     }
 }

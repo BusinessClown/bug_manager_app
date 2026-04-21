@@ -26,8 +26,8 @@ public class BugListController {
     private final BugService         bugService = new BugService(bugDao);
     private final ProjectDao         projectDao = new ProjectDao();
 
-    private List<Bug>    currentBugs   = new ArrayList<>();
-    private boolean      showingMyBugs = true;
+    private List<Bug> currentBugs   = new ArrayList<>();
+    private boolean   showingMyBugs = true;
 
     public BugListController(BugListView bugListView, User loggedInUser) {
         this.bugListView  = bugListView;
@@ -185,6 +185,7 @@ public class BugListController {
         Bug bug = getSelectedBug();
         if (bug == null) { bugListView.showError("Please select a bug."); return; }
         bug.setStatus(BugStatus.COMPLETED);
+        bug.setLastEditedBy(loggedInUser);
         bugService.updateBug(bug); refreshCurrent();
         bugListView.showSuccess("Bug marked as Completed.");
     }
@@ -193,6 +194,7 @@ public class BugListController {
         Bug bug = getSelectedBug();
         if (bug == null) { bugListView.showError("Please select a bug."); return; }
         bug.setStatus(BugStatus.IN_PROGRESS);
+        bug.setLastEditedBy(loggedInUser);
         bugService.updateBug(bug); refreshCurrent();
         bugListView.showSuccess("Bug marked as In Progress.");
     }
@@ -212,16 +214,16 @@ public class BugListController {
     public void onSaveFormClick(boolean editMode) {
         View.BugFormPanel form = editMode ? bugListView.getEditBugPanel() : bugListView.getNewBugPanel();
 
-        String title    = form.getTitleText();
-        String desc     = form.getDescText();
+        String title      = form.getTitleText();
+        String desc       = form.getDescText();
         String dueDateStr = form.getDueDateText();
-        String priority = form.getPriorityText();
-        String severity = form.getSeverityText();
-        String category = form.getCategoryText();
-        String status   = form.getStatusText();
-        Project project = form.getSelectedProject();
+        String priority   = form.getPriorityText();
+        String severity   = form.getSeverityText();
+        String category   = form.getCategoryText();
+        String status     = form.getStatusText();
+        Project project   = form.getSelectedProject();
 
-        if (title.isEmpty())    { bugListView.showError("Title is required."); return; }
+        if (title.isEmpty())     { bugListView.showError("Title is required."); return; }
         if (dueDateStr.isEmpty()){ bugListView.showError("Due date is required."); return; }
 
         LocalDate dueDate;
@@ -238,6 +240,7 @@ public class BugListController {
             bug.setCategory(BugCategory.valueOf(category));
             bug.setStatus(BugStatus.valueOf(status));
             bug.setProject(project);
+            bug.setLastEditedBy(loggedInUser);   // stamp who edited
             bugService.updateBug(bug);
             bugListView.showSuccess("Bug \"" + title + "\" updated successfully.");
         } else {
@@ -245,6 +248,7 @@ public class BugListController {
                     BugStatus.OPEN, BugPriority.valueOf(priority),
                     BugSeverity.valueOf(severity), BugCategory.valueOf(category));
             newBug.setProject(project);
+            // No lastEditedBy on creation — it starts null
             long newId = bugService.createBug(newBug);
             if (newId == -1) { bugListView.showError("Failed to save bug. Please try again."); return; }
             bugListView.showSuccess("Bug \"" + title + "\" created successfully.");

@@ -18,34 +18,35 @@ public class BugListView extends JFrame {
     private final User loggedInUser;
     private BugListController controller;
 
-    // ── Header ───────────────────────────────────────────────────────────────────
+    // ── Header ────────────────────────────────────────────────────────────────
     private JLabel  lblWelcome;
-    private JButton btnMyBugs, btnAllBugs, btnAdminUsers, btnNewProject, btnProjectMgmt, btnLogout;
+    private JButton btnMyBugs, btnAllBugs, btnAdminUsers, btnNewProject,
+                    btnProjectMgmt, btnSettings, btnLogout;
 
-    // ── Sidebar ──────────────────────────────────────────────────────────────────
+    // ── Sidebar ───────────────────────────────────────────────────────────────
     private DefaultListModel<String> sidebarModel = new DefaultListModel<>();
     private JList<String>            sidebarList  = new JList<>(sidebarModel);
     private List<Bug>                sidebarBugs;
     private JLabel                   sidebarLabel;
 
-    // ── Filter bar ───────────────────────────────────────────────────────────────
+    // ── Filter bar ────────────────────────────────────────────────────────────
     private JComboBox<String> cmbStatus   = new JComboBox<>(new String[]{"Any","OPEN","IN_PROGRESS","COMPLETED"});
     private JComboBox<String> cmbPriority = new JComboBox<>(new String[]{"Any","LOW","MEDIUM","HIGH"});
     private JComboBox<String> cmbSeverity = new JComboBox<>(new String[]{"Any","BLOCKER","SEVERE","MAJOR","MINOR","COSMETIC"});
     private JComboBox<String> cmbCategory = new JComboBox<>(new String[]{"Any","FUNCTIONAL","GRAPHICAL","PERFORMANCE","TECHNICAL","SECURITY","COMPATIBILITY"});
     private JComboBox<String> cmbProject  = new JComboBox<>(new String[]{"Any"});
-    private JTextField txtKeyword = new JTextField(14);
-    private JButton btnApplyFilter = AppTheme.primaryButton("Filter");
-    private JButton btnClearFilter = AppTheme.secondaryButton("Clear");
-    private JButton btnShowClosed  = AppTheme.secondaryButton("Show Closed Projects");
+    private JTextField txtKeyword   = new JTextField(14);
+    private JButton btnApplyFilter  = AppTheme.primaryButton("Filter");
+    private JButton btnClearFilter  = AppTheme.secondaryButton("Clear");
+    private JButton btnShowClosed   = AppTheme.secondaryButton("Show Closed Projects");
     private boolean showingClosedProjects = false;
 
-    // ── Table ────────────────────────────────────────────────────────────────────
+    // ── Table ─────────────────────────────────────────────────────────────────
     private JTable            tblBugs;
     private DefaultTableModel tableModel;
     private List<Bug>         tableBugs;
 
-    // ── Action buttons ───────────────────────────────────────────────────────────
+    // ── Action buttons ────────────────────────────────────────────────────────
     private JButton btnNewBug       = AppTheme.primaryButton("+ New Bug");
     private JButton btnRead         = AppTheme.secondaryButton("Read");
     private JButton btnEditBug      = AppTheme.secondaryButton("Edit");
@@ -54,27 +55,29 @@ public class BugListView extends JFrame {
     private JButton btnDelete       = AppTheme.dangerButton("Delete");
     private JButton btnRefresh      = AppTheme.secondaryButton("Refresh");
 
-    // ── Cards ────────────────────────────────────────────────────────────────────
+    // ── Cards ─────────────────────────────────────────────────────────────────
     private JPanel     centerCards;
     private CardLayout cardLayout = new CardLayout();
-    public static final String CARD_TABLE   = "TABLE";
-    public static final String CARD_NEW     = "NEW";
-    public static final String CARD_EDIT    = "EDIT";
-    public static final String CARD_READ    = "READ";
-    public static final String CARD_USERS   = "USERS";
+    public static final String CARD_TABLE     = "TABLE";
+    public static final String CARD_NEW       = "NEW";
+    public static final String CARD_EDIT      = "EDIT";
+    public static final String CARD_READ      = "READ";
+    public static final String CARD_USERS     = "USERS";
     public static final String CARD_PROJ_MGMT = "PROJ_MGMT";
+    public static final String CARD_SETTINGS  = "SETTINGS";
 
-    // ── Status bar ───────────────────────────────────────────────────────────────
+    // ── Status bar ────────────────────────────────────────────────────────────
     private JLabel lblStatus;
 
-    // ── Sub-panels ───────────────────────────────────────────────────────────────
-    private BugFormPanel        newBugPanel;
-    private BugFormPanel        editBugPanel;
-    private BugReadPanel        readBugPanel;
-    private UserManagementPanel userManagementPanel;
+    // ── Sub-panels ────────────────────────────────────────────────────────────
+    private BugFormPanel           newBugPanel;
+    private BugFormPanel           editBugPanel;
+    private BugReadPanel           readBugPanel;
+    private UserManagementPanel    userManagementPanel;
     private ProjectManagementPanel projectManagementPanel;
+    private SettingsPanel          settingsPanel;
 
-    // ═══════════════════════════════════════════════════════════════════════════════
+    // ═════════════════════════════════════════════════════════════════════════
     public BugListView(User loggedInUser) {
         this.loggedInUser = loggedInUser;
         controller = new BugListController(this, loggedInUser);
@@ -95,7 +98,7 @@ public class BugListView extends JFrame {
         add(buildStatusBar(), BorderLayout.SOUTH);
     }
 
-    // ── Header ───────────────────────────────────────────────────────────────────
+    // ── Header ────────────────────────────────────────────────────────────────
     private JPanel buildHeader() {
         JPanel h = new JPanel(new BorderLayout());
         h.setBackground(AppTheme.BG_HEADER);
@@ -107,8 +110,7 @@ public class BugListView extends JFrame {
         logo.setFont(AppTheme.FONT_HEADING);
         logo.setForeground(AppTheme.ACCENT);
 
-        lblWelcome = new JLabel("Hello, " + loggedInUser.getFullname()
-            + (loggedInUser.isAdmin() ? "  [Admin]" : ""));
+        lblWelcome = new JLabel(welcomeText());
         lblWelcome.setFont(AppTheme.FONT_BODY);
         lblWelcome.setForeground(AppTheme.TEXT_MUTED);
 
@@ -138,7 +140,6 @@ public class BugListView extends JFrame {
             right.add(btnProjectMgmt);
         }
 
-        // New Project button — between All Bugs area and Logout
         btnNewProject = AppTheme.primaryButton("+ New Project");
         btnNewProject.addActionListener(e -> controller.onNewProjectClick());
         right.add(Box.createHorizontalStrut(8));
@@ -146,9 +147,14 @@ public class BugListView extends JFrame {
 
         right.add(Box.createHorizontalStrut(16));
         JSeparator sep = new JSeparator(JSeparator.VERTICAL);
-        sep.setPreferredSize(new java.awt.Dimension(1, 24));
+        sep.setPreferredSize(new Dimension(1, 24));
         sep.setForeground(AppTheme.BORDER_COLOR);
         right.add(sep);
+        right.add(Box.createHorizontalStrut(8));
+
+        btnSettings = AppTheme.secondaryButton("⚙  Settings");
+        btnSettings.addActionListener(e -> showSettingsPanel(SettingsPanel.CARD_USER));
+        right.add(btnSettings);
         right.add(Box.createHorizontalStrut(8));
 
         btnLogout = AppTheme.dangerButton("⏻  Log Out");
@@ -160,7 +166,7 @@ public class BugListView extends JFrame {
         return h;
     }
 
-    // ── Body ─────────────────────────────────────────────────────────────────────
+    // ── Body ──────────────────────────────────────────────────────────────────
     private JSplitPane buildBody() {
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
             buildSidebar(), buildCenter());
@@ -171,13 +177,13 @@ public class BugListView extends JFrame {
         return split;
     }
 
-    // ── Sidebar ──────────────────────────────────────────────────────────────────
+    // ── Sidebar ───────────────────────────────────────────────────────────────
     private JPanel buildSidebar() {
         sidebarList.setBackground(AppTheme.BG_SIDEBAR);
         sidebarList.setForeground(AppTheme.TEXT_PRIMARY);
         sidebarList.setFont(AppTheme.FONT_SMALL);
         sidebarList.setSelectionBackground(AppTheme.TABLE_SEL);
-        sidebarList.setSelectionForeground(Color.WHITE);
+        sidebarList.setSelectionForeground(java.awt.Color.WHITE);
         sidebarList.setFixedCellHeight(44);
         sidebarList.setBorder(null);
         sidebarList.setCellRenderer(new SidebarRenderer());
@@ -205,18 +211,18 @@ public class BugListView extends JFrame {
         return p;
     }
 
-    // ── Center ───────────────────────────────────────────────────────────────────
+    // ── Center ────────────────────────────────────────────────────────────────
     private JPanel buildCenter() {
         tableModel = new DefaultTableModel(
-            new Object[]{"ID","Title","Status","Priority","Severity","Category","Project","Due Date","Submitted By"}, 0) {
+            new Object[]{"ID","Title","Status","Priority","Severity","Category","Project","Due Date","Submitted By","Last Edited By"}, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
-        // DueDate=col7, Status=col2
         tblBugs = buildBugTableWithOverdue1(tableModel, 7, 2);
 
-        newBugPanel  = new BugFormPanel(this, false);
-        editBugPanel = new BugFormPanel(this, true);
-        readBugPanel = new BugReadPanel(this);
+        newBugPanel   = new BugFormPanel(this, false);
+        editBugPanel  = new BugFormPanel(this, true);
+        readBugPanel  = new BugReadPanel(this);
+        settingsPanel = new SettingsPanel(this);
 
         centerCards = new JPanel(cardLayout);
         centerCards.setBackground(AppTheme.BG_DARK);
@@ -224,6 +230,7 @@ public class BugListView extends JFrame {
         centerCards.add(newBugPanel,      CARD_NEW);
         centerCards.add(editBugPanel,     CARD_EDIT);
         centerCards.add(readBugPanel,     CARD_READ);
+        centerCards.add(settingsPanel,    CARD_SETTINGS);
 
         if (loggedInUser.isAdmin()) {
             userManagementPanel = new UserManagementPanel(this);
@@ -240,7 +247,6 @@ public class BugListView extends JFrame {
         JPanel card = new JPanel(new BorderLayout());
         card.setBackground(AppTheme.BG_DARK);
 
-        // Filter bar
         JPanel fb = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 8));
         fb.setBackground(AppTheme.BG_HEADER);
         fb.setBorder(BorderFactory.createMatteBorder(0,0,1,0,AppTheme.BORDER_COLOR));
@@ -258,10 +264,8 @@ public class BugListView extends JFrame {
         fb.add(AppTheme.muted("Project:"));  fb.add(cmbProject);
         fb.add(Box.createHorizontalStrut(4));
         fb.add(AppTheme.muted("Keyword:"));  fb.add(txtKeyword);
-        fb.add(btnApplyFilter);
-        fb.add(btnClearFilter);
-        fb.add(Box.createHorizontalStrut(8));
-        fb.add(btnShowClosed);
+        fb.add(btnApplyFilter); fb.add(btnClearFilter);
+        fb.add(Box.createHorizontalStrut(8)); fb.add(btnShowClosed);
         btnApplyFilter.addActionListener(e -> controller.onApplyFilterClick());
         btnClearFilter.addActionListener(e -> controller.onClearFilterClick());
         btnShowClosed.addActionListener(e  -> controller.onToggleClosedProjects());
@@ -276,7 +280,6 @@ public class BugListView extends JFrame {
         ab.add(btnNewBug); ab.add(btnRead); ab.add(btnEditBug);
         ab.add(btnMarkComplete); ab.add(btnMarkProgress);
         ab.add(btnDelete); ab.add(Box.createHorizontalStrut(8)); ab.add(btnRefresh);
-
         btnNewBug.addActionListener(e       -> controller.onAddButtonClick());
         btnRead.addActionListener(e         -> controller.onReadButtonClick());
         btnEditBug.addActionListener(e      -> controller.onEditButtonClick());
@@ -294,59 +297,35 @@ public class BugListView extends JFrame {
     private void showLogoutDialog() {
         JDialog dlg = new JDialog(this, "Log Out", true);
         dlg.setUndecorated(true);
-        dlg.setBackground(AppTheme.BG_PANEL);
-
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(AppTheme.BG_PANEL);
         root.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(AppTheme.BORDER_COLOR, 1),
-            new EmptyBorder(28, 32, 24, 32)));
-
+            BorderFactory.createLineBorder(AppTheme.BORDER_COLOR,1),
+            new EmptyBorder(28,32,24,32)));
         JLabel icon = new JLabel("⏻", SwingConstants.CENTER);
         icon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 32));
-        icon.setForeground(new Color(220, 60, 60));
+        icon.setForeground(new Color(220,60,60));
         icon.setAlignmentX(Component.CENTER_ALIGNMENT);
-
         JLabel msg = new JLabel("Log out of Bug Tracker?", SwingConstants.CENTER);
-        msg.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        msg.setFont(new Font("Segoe UI",Font.BOLD,15));
         msg.setForeground(AppTheme.TEXT_PRIMARY);
         msg.setAlignmentX(Component.CENTER_ALIGNMENT);
-
         JLabel sub = new JLabel("You'll be returned to the sign-in screen.", SwingConstants.CENTER);
-        sub.setFont(AppTheme.FONT_SMALL);
-        sub.setForeground(AppTheme.TEXT_MUTED);
+        sub.setFont(AppTheme.FONT_SMALL); sub.setForeground(AppTheme.TEXT_MUTED);
         sub.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JPanel top = new JPanel();
-        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
-        top.setOpaque(false);
-        top.add(icon);
-        top.add(Box.createVerticalStrut(12));
-        top.add(msg);
-        top.add(Box.createVerticalStrut(6));
-        top.add(sub);
-
-        JButton btnYes = AppTheme.dangerButton("Yes, Log Out");
-        JButton btnNo  = AppTheme.secondaryButton("Cancel");
-        btnYes.setPreferredSize(new Dimension(130, 36));
-        btnNo.setPreferredSize(new Dimension(100, 36));
-
-        btnYes.addActionListener(e -> { dlg.dispose(); dispose(); new LoginView().setVisible(true); });
-        btnNo.addActionListener(e  -> dlg.dispose());
-
-        JPanel btns = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-        btns.setOpaque(false);
-        btns.add(btnNo);
-        btns.add(btnYes);
-
-        root.add(top,  BorderLayout.CENTER);
-        root.add(btns, BorderLayout.SOUTH);
-        ((JPanel) root.getComponent(1)).setBorder(new EmptyBorder(20, 0, 0, 0));
-
-        dlg.setContentPane(root);
-        dlg.pack();
-        dlg.setLocationRelativeTo(this);
-        dlg.setVisible(true);
+        JPanel top = new JPanel(); top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS)); top.setOpaque(false);
+        top.add(icon); top.add(Box.createVerticalStrut(12));
+        top.add(msg);  top.add(Box.createVerticalStrut(6)); top.add(sub);
+        JButton yes = AppTheme.dangerButton("Yes, Log Out");
+        JButton no  = AppTheme.secondaryButton("Cancel");
+        yes.setPreferredSize(new Dimension(130,36)); no.setPreferredSize(new Dimension(100,36));
+        yes.addActionListener(e -> { dlg.dispose(); dispose(); new LoginView().setVisible(true); });
+        no.addActionListener(e  -> dlg.dispose());
+        JPanel btns = new JPanel(new FlowLayout(FlowLayout.CENTER,10,0)); btns.setOpaque(false);
+        btns.add(no); btns.add(yes);
+        root.add(top, BorderLayout.CENTER); root.add(btns, BorderLayout.SOUTH);
+        ((JPanel)root.getComponent(1)).setBorder(new EmptyBorder(20,0,0,0));
+        dlg.setContentPane(root); dlg.pack(); dlg.setLocationRelativeTo(this); dlg.setVisible(true);
     }
 
     private JPanel buildStatusBar() {
@@ -356,30 +335,37 @@ public class BugListView extends JFrame {
             BorderFactory.createMatteBorder(1,0,0,0,AppTheme.BORDER_COLOR),
             new EmptyBorder(8,16,8,16)));
         lblStatus = new JLabel(" ");
-        lblStatus.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13));
+        lblStatus.setFont(new Font("Segoe UI",Font.BOLD,13));
         lblStatus.setForeground(AppTheme.TEXT_MUTED);
         bar.add(lblStatus, BorderLayout.WEST);
         return bar;
     }
 
-    // ── Public API ────────────────────────────────────────────────────────────────
+    // ── Public API ────────────────────────────────────────────────────────────
+
+    /** Open settings and show the specified inner card (CARD_USER / CARD_THEME / CARD_ADVANCED). */
+    public void showSettingsPanel(String innerCard) {
+        settingsPanel.populate(loggedInUser);
+        settingsPanel.showInnerCard(innerCard);
+        showCard(CARD_SETTINGS);
+    }
 
     public void displayBugs(List<Bug> bugs) {
         this.sidebarBugs = bugs;
         this.tableBugs   = bugs;
         tableModel.setRowCount(0);
         sidebarModel.clear();
-        // Keep sidebar label in sync with My Bugs / All Bugs mode
-        if (controller != null) {
+        if (controller != null)
             sidebarLabel.setText(controller.isShowingMyBugs() ? "  MY BUGS" : "  ALL BUGS");
-        }
         for (Bug b : bugs) {
+            String sub = (b.getUser() == null) ? "Unknown User" : b.getUser().getFullname();
+            String led = (b.getLastEditedBy() == null) ? "" : b.getLastEditedBy().getFullname();
             tableModel.addRow(new Object[]{
                 b.getId(), b.getTitle(), b.getStatus(), b.getPriority(),
-                b.getSeverity() != null ? b.getSeverity() : "",
-                b.getCategory() != null ? b.getCategory() : "",
-                b.getProject() != null ? b.getProject().getName() : "",
-                b.getDueDate(), b.getUser().getFullname()
+                b.getSeverity()  != null ? b.getSeverity()  : "",
+                b.getCategory()  != null ? b.getCategory()  : "",
+                b.getProject()   != null ? b.getProject().getName() : "",
+                b.getDueDate(), sub, led
             });
             sidebarModel.addElement(b.getTitle());
         }
@@ -392,39 +378,48 @@ public class BugListView extends JFrame {
         for (Bug b : bugs) sidebarModel.addElement(b.getTitle());
     }
 
+    /**
+     * Restores sidebar to whichever of My Bugs / All Bugs is active.
+     * Uses tableBugs so label + entries always match the main table.
+     */
     public void restoreSidebar() {
-        // Restore sidebar label to match current My Bugs / All Bugs mode
-        sidebarLabel.setText(controller.isShowingMyBugs() ? "  MY BUGS" : "  ALL BUGS");
+        boolean myBugs = controller != null && controller.isShowingMyBugs();
+        sidebarLabel.setText(myBugs ? "  MY BUGS" : "  ALL BUGS");
         sidebarModel.clear();
-        if (sidebarBugs != null)
-            for (Bug b : sidebarBugs) sidebarModel.addElement(b.getTitle());
+        if (tableBugs != null)
+            for (Bug b : tableBugs) sidebarModel.addElement(b.getTitle());
     }
 
-    /** Update header button styles and sidebar label when switching between My Bugs / All Bugs. */
     public void setMyBugsActive(boolean myBugs) {
-        // Swap button appearance
         if (myBugs) {
             btnMyBugs.setBackground(AppTheme.ACCENT);
-            btnMyBugs.setForeground(Color.WHITE);
+            btnMyBugs.setForeground(java.awt.Color.WHITE);
             btnAllBugs.setBackground(AppTheme.BG_PANEL);
             btnAllBugs.setForeground(AppTheme.TEXT_PRIMARY);
         } else {
             btnAllBugs.setBackground(AppTheme.ACCENT);
-            btnAllBugs.setForeground(Color.WHITE);
+            btnAllBugs.setForeground(java.awt.Color.WHITE);
             btnMyBugs.setBackground(AppTheme.BG_PANEL);
             btnMyBugs.setForeground(AppTheme.TEXT_PRIMARY);
         }
-        // Update sidebar label
         sidebarLabel.setText(myBugs ? "  MY BUGS" : "  ALL BUGS");
     }
 
-    /** Refresh the project filter dropdown with given project names. */
-    public void refreshProjectFilter(List<String> projectNames) {
-        String current = (String) cmbProject.getSelectedItem();
-        cmbProject.removeAllItems();
-        cmbProject.addItem("Any");
-        for (String name : projectNames) cmbProject.addItem(name);
-        if (current != null) cmbProject.setSelectedItem(current);
+    /** Called by SettingsController after a successful profile save. */
+    public void refreshWelcomeLabel() {
+        if (lblWelcome != null) lblWelcome.setText(welcomeText());
+    }
+
+    private String welcomeText() {
+        return "Hello, " + loggedInUser.getFullname()
+            + (loggedInUser.isAdmin() ? "  [Admin]" : "");
+    }
+
+    public void refreshProjectFilter(List<String> names) {
+        String cur = (String) cmbProject.getSelectedItem();
+        cmbProject.removeAllItems(); cmbProject.addItem("Any");
+        for (String n : names) cmbProject.addItem(n);
+        if (cur != null) cmbProject.setSelectedItem(cur);
     }
 
     public void showCard(String name) {
@@ -444,207 +439,128 @@ public class BugListView extends JFrame {
     public boolean isShowingClosedProjects() { return showingClosedProjects; }
 
     public void showSuccess(String msg) {
-        if (lblStatus == null) return;
+        if (lblStatus==null) return;
         lblStatus.setForeground(AppTheme.SUCCESS);
         lblStatus.setText("✔  " + msg);
-        lblStatus.getParent().setBackground(new Color(20, 50, 30));
+        lblStatus.getParent().setBackground(new Color(20,50,30));
     }
     public void showError(String msg) {
-        if (lblStatus == null) return;
-        lblStatus.setForeground(new Color(255, 100, 100));
+        if (lblStatus==null) return;
+        lblStatus.setForeground(new Color(255,100,100));
         lblStatus.setText("✖  " + msg);
-        lblStatus.getParent().setBackground(new Color(60, 18, 18));
+        lblStatus.getParent().setBackground(new Color(60,18,18));
     }
     public void showInfo(String msg) {
-        if (lblStatus == null) return;
-        lblStatus.setForeground(new Color(130, 170, 255));
+        if (lblStatus==null) return;
+        lblStatus.setForeground(new Color(130,170,255));
         lblStatus.setText("ℹ  " + msg);
         lblStatus.getParent().setBackground(AppTheme.BG_HEADER);
     }
 
-    // ── Getters ───────────────────────────────────────────────────────────────────
-    public JTable             getTblBugs()         { return tblBugs; }
-    public DefaultTableModel  getTableModel()      { return tableModel; }
-    public List<Bug>          getTableBugs()       { return tableBugs; }
-    public JComboBox<String>  getCmbStatus()       { return cmbStatus; }
-    public JComboBox<String>  getCmbPriority()     { return cmbPriority; }
-    public JComboBox<String>  getCmbSeverity()     { return cmbSeverity; }
-    public JComboBox<String>  getCmbCategory()     { return cmbCategory; }
-    public JComboBox<String>  getCmbProject()      { return cmbProject; }
-    public JTextField         getTxtKeywordSearch(){ return txtKeyword; }
-    public User               getLoggedInUser()    { return loggedInUser; }
-    public BugListController  getController()      { return controller; }
-    public BugFormPanel       getNewBugPanel()     { return newBugPanel; }
-    public BugFormPanel       getEditBugPanel()    { return editBugPanel; }
+    // ── Getters ───────────────────────────────────────────────────────────────
+    public JTable              getTblBugs()          { return tblBugs; }
+    public DefaultTableModel   getTableModel()       { return tableModel; }
+    public List<Bug>           getTableBugs()        { return tableBugs; }
+    public JComboBox<String>   getCmbStatus()        { return cmbStatus; }
+    public JComboBox<String>   getCmbPriority()      { return cmbPriority; }
+    public JComboBox<String>   getCmbSeverity()      { return cmbSeverity; }
+    public JComboBox<String>   getCmbCategory()      { return cmbCategory; }
+    public JComboBox<String>   getCmbProject()       { return cmbProject; }
+    public JTextField          getTxtKeywordSearch() { return txtKeyword; }
+    public User                getLoggedInUser()     { return loggedInUser; }
+    public BugListController   getController()       { return controller; }
+    public BugFormPanel        getNewBugPanel()      { return newBugPanel; }
+    public BugFormPanel        getEditBugPanel()     { return editBugPanel; }
+    public SettingsPanel       getSettingsPanel()    { return settingsPanel; }
     public UserManagementPanel getUserManagementPanel() { return userManagementPanel; }
 
-    // ── Styling helpers ───────────────────────────────────────────────────────────
+    // ── Table helpers ─────────────────────────────────────────────────────────
     static JTable buildStyledTable(DefaultTableModel model) {
-        JTable table = new JTable(model) {
+        JTable t = new JTable(model) {
             @Override public Component prepareRenderer(TableCellRenderer r, int row, int col) {
                 Component c = super.prepareRenderer(r, row, col);
-                if (isRowSelected(row)) {
-                    c.setBackground(AppTheme.TABLE_SEL);
-                    c.setForeground(Color.WHITE);
-                } else {
-                    c.setBackground(row % 2 == 0 ? AppTheme.BG_PANEL : AppTheme.TABLE_ALT);
+                if (isRowSelected(row)) { c.setBackground(AppTheme.TABLE_SEL); c.setForeground(java.awt.Color.WHITE); }
+                else {
+                    c.setBackground(row%2==0 ? AppTheme.BG_PANEL : AppTheme.TABLE_ALT);
                     c.setForeground(AppTheme.TEXT_PRIMARY);
                 }
-                if (c instanceof JLabel) ((JLabel)c).setBorder(new EmptyBorder(4,10,4,10));
+                if (c instanceof JLabel jl) jl.setBorder(new EmptyBorder(4,10,4,10));
                 return c;
             }
         };
-        table.setBackground(AppTheme.BG_PANEL);
-        table.setForeground(AppTheme.TEXT_PRIMARY);
-        table.setFont(AppTheme.FONT_BODY);
-        table.setRowHeight(30);
-        table.setShowGrid(false);
-        table.setIntercellSpacing(new Dimension(0,1));
-        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.setFillsViewportHeight(true);
-        JTableHeader hdr = table.getTableHeader();
-        hdr.setBackground(AppTheme.BG_HEADER);
-        hdr.setForeground(AppTheme.TEXT_MUTED);
-        hdr.setFont(AppTheme.FONT_LABEL);
-        hdr.setBorder(BorderFactory.createMatteBorder(0,0,1,0,AppTheme.BORDER_COLOR));
-        hdr.setReorderingAllowed(false);
-        return table;
+        styleTable(t); return t;
     }
 
-    /**
-     * Builds the main bug table with full colour rendering:
-     * closed+completed = black bg / green text, closed = black bg / red text,
-     * completed = dark green bg / green text, overdue = dark red bg / red text.
-     */
     JTable buildBugTableWithOverdue1(DefaultTableModel model, int dueDateCol, int statusCol) {
         BugListView self = this;
-        JTable table = new JTable(model) {
+        JTable t = new JTable(model) {
             @Override public Component prepareRenderer(TableCellRenderer r, int row, int col) {
                 Component c = super.prepareRenderer(r, row, col);
-                if (isRowSelected(row)) {
-                    c.setBackground(AppTheme.TABLE_SEL);
-                    c.setForeground(Color.WHITE);
-                } else {
-                    boolean closedProject = false;
-                    boolean completed = false;
-                    boolean overdue = false;
-
-                    // Check closed project and completed status via tableBugs list
-                    List<Bug> bugs = self.tableBugs;
-                    if (bugs != null && row < bugs.size()) {
-                        Bug bug = bugs.get(row);
-                        closedProject = bug.isInClosedProject();
-                        completed = bug.getStatus() == BugStatus.COMPLETED;
+                if (isRowSelected(row)) { c.setBackground(AppTheme.TABLE_SEL); c.setForeground(java.awt.Color.WHITE); }
+                else {
+                    boolean closed=false, completed=false, overdue=false;
+                    if (self.tableBugs!=null && row<self.tableBugs.size()) {
+                        Bug b=self.tableBugs.get(row);
+                        closed=b.isInClosedProject(); completed=b.getStatus()==BugStatus.COMPLETED;
                     }
-
-                    if (!closedProject && !completed) {
-                        Object statusVal = getValueAt(row, statusCol);
-                        Object dueVal    = getValueAt(row, dueDateCol);
-                        if (statusVal != null && !statusVal.toString().equals("COMPLETED") && dueVal != null) {
-                            try {
-                                LocalDate due = dueVal instanceof LocalDate
-                                    ? (LocalDate) dueVal
-                                    : LocalDate.parse(dueVal.toString());
-                                overdue = due.isBefore(LocalDate.now());
-                            } catch (Exception ignored) {}
+                    if (!closed && !completed) {
+                        Object sv=getValueAt(row,statusCol), dv=getValueAt(row,dueDateCol);
+                        if (sv!=null && !sv.toString().equals("COMPLETED") && dv!=null) {
+                            try { LocalDate d=dv instanceof LocalDate ld?ld:LocalDate.parse(dv.toString()); overdue=d.isBefore(LocalDate.now()); }
+                            catch(Exception ignored){}
                         }
                     }
-
-                    if (closedProject && completed) {
-                        // Closed project + completed: black background, green text
-                        c.setBackground(new Color(0, 0, 0));
-                        c.setForeground(new Color(80, 200, 120));
-                    } else if (closedProject) {
-                        // Closed project not completed: black background, red text
-                        c.setBackground(new Color(0, 0, 0));
-                        c.setForeground(new Color(255, 120, 120));
-                    } else if (completed) {
-                        // Completed (open project): green background, green text
-                        c.setBackground(new Color(20, 60, 30));
-                        c.setForeground(new Color(80, 200, 120));
-                    } else if (overdue) {
-                        c.setBackground(new Color(90, 20, 20));
-                        c.setForeground(new Color(255, 120, 120));
-                    } else {
-                        c.setBackground(row % 2 == 0 ? AppTheme.BG_PANEL : AppTheme.TABLE_ALT);
-                        c.setForeground(AppTheme.TEXT_PRIMARY);
-                    }
+                    if (closed&&completed){ c.setBackground(new Color(0,0,0));     c.setForeground(new Color(80,200,120)); }
+                    else if (closed)      { c.setBackground(new Color(0,0,0));     c.setForeground(new Color(255,120,120)); }
+                    else if (completed)   { c.setBackground(new Color(20,60,30));  c.setForeground(new Color(80,200,120)); }
+                    else if (overdue)     { c.setBackground(new Color(90,20,20));  c.setForeground(new Color(255,120,120)); }
+                    else { c.setBackground(row%2==0?AppTheme.BG_PANEL:AppTheme.TABLE_ALT); c.setForeground(AppTheme.TEXT_PRIMARY); }
                 }
-                if (c instanceof JLabel) ((JLabel)c).setBorder(new EmptyBorder(4,10,4,10));
+                if (c instanceof JLabel jl) jl.setBorder(new EmptyBorder(4,10,4,10));
                 return c;
             }
         };
-        table.setBackground(AppTheme.BG_PANEL);
-        table.setForeground(AppTheme.TEXT_PRIMARY);
-        table.setFont(AppTheme.FONT_BODY);
-        table.setRowHeight(30);
-        table.setShowGrid(false);
-        table.setIntercellSpacing(new Dimension(0,1));
-        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.setFillsViewportHeight(true);
-        JTableHeader hdr = table.getTableHeader();
-        hdr.setBackground(AppTheme.BG_HEADER);
-        hdr.setForeground(AppTheme.TEXT_MUTED);
+        styleTable(t); return t;
+    }
+
+    private static void styleTable(JTable t) {
+        t.setBackground(AppTheme.BG_PANEL); t.setForeground(AppTheme.TEXT_PRIMARY);
+        t.setFont(AppTheme.FONT_BODY); t.setRowHeight(30);
+        t.setShowGrid(false); t.setIntercellSpacing(new Dimension(0,1));
+        t.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        t.setFillsViewportHeight(true);
+        JTableHeader hdr = t.getTableHeader();
+        hdr.setBackground(AppTheme.BG_HEADER); hdr.setForeground(AppTheme.TEXT_MUTED);
         hdr.setFont(AppTheme.FONT_LABEL);
         hdr.setBorder(BorderFactory.createMatteBorder(0,0,1,0,AppTheme.BORDER_COLOR));
         hdr.setReorderingAllowed(false);
-        return table;
     }
 
     private void styleCombo(JComboBox<String> c) {
-        c.setBackground(AppTheme.BG_PANEL);
-        c.setForeground(AppTheme.TEXT_PRIMARY);
-        c.setFont(AppTheme.FONT_BODY);
+        c.setBackground(AppTheme.BG_PANEL); c.setForeground(AppTheme.TEXT_PRIMARY); c.setFont(AppTheme.FONT_BODY);
     }
     private void styleFilterField(JTextField f) {
-        f.setBackground(AppTheme.BG_PANEL);
-        f.setForeground(AppTheme.TEXT_PRIMARY);
-        f.setCaretColor(AppTheme.TEXT_PRIMARY);
-        f.setFont(AppTheme.FONT_BODY);
+        f.setBackground(AppTheme.BG_PANEL); f.setForeground(AppTheme.TEXT_PRIMARY);
+        f.setCaretColor(AppTheme.TEXT_PRIMARY); f.setFont(AppTheme.FONT_BODY);
         f.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(AppTheme.BORDER_COLOR),
-            new EmptyBorder(4,8,4,8)));
+            BorderFactory.createLineBorder(AppTheme.BORDER_COLOR), new EmptyBorder(4,8,4,8)));
     }
 
     private class SidebarRenderer extends DefaultListCellRenderer {
-        @Override public Component getListCellRendererComponent(JList<?> list, Object value,
-                int index, boolean isSelected, boolean hasFocus) {
-            JLabel l = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, hasFocus);
-            l.setBorder(new EmptyBorder(10,14,10,10));
-            l.setFont(AppTheme.FONT_SMALL);
-
-            boolean closedProject = false;
-            boolean completed = false;
-            boolean overdue = false;
-            if (sidebarBugs != null && index < sidebarBugs.size()) {
-                Bug bug = sidebarBugs.get(index);
-                closedProject = bug.isInClosedProject();
-                completed = bug.getStatus() == model.BugStatus.COMPLETED;
-                overdue = bug.isOverdue();
+        @Override public Component getListCellRendererComponent(JList<?> list,Object value,int index,boolean sel,boolean focus){
+            JLabel l=(JLabel)super.getListCellRendererComponent(list,value,index,sel,focus);
+            l.setBorder(new EmptyBorder(10,14,10,10)); l.setFont(AppTheme.FONT_SMALL);
+            boolean closed=false,completed=false,overdue=false;
+            if(sidebarBugs!=null&&index<sidebarBugs.size()){
+                Bug b=sidebarBugs.get(index);
+                closed=b.isInClosedProject(); completed=b.getStatus()==model.BugStatus.COMPLETED; overdue=b.isOverdue();
             }
-
-            if (isSelected) {
-                l.setBackground(AppTheme.TABLE_SEL);
-                l.setForeground(Color.WHITE);
-            } else if (closedProject && completed) {
-                // Closed project + completed: black background, green text
-                l.setBackground(new Color(0, 0, 0));
-                l.setForeground(new Color(80, 200, 120));
-            } else if (closedProject) {
-                // Closed project not completed: black background, red text
-                l.setBackground(new Color(0, 0, 0));
-                l.setForeground(new Color(255, 120, 120));
-            } else if (completed) {
-                // Completed (open project): green background, green text
-                l.setBackground(new Color(20, 60, 30));
-                l.setForeground(new Color(80, 200, 120));
-            } else if (overdue) {
-                l.setBackground(new Color(90, 20, 20));
-                l.setForeground(new Color(255, 120, 120));
-            } else {
-                l.setBackground(AppTheme.BG_SIDEBAR);
-                l.setForeground(AppTheme.TEXT_PRIMARY);
-            }
+            if(sel){l.setBackground(AppTheme.TABLE_SEL);l.setForeground(java.awt.Color.WHITE);}
+            else if(closed&&completed){l.setBackground(new Color(0,0,0));l.setForeground(new Color(80,200,120));}
+            else if(closed){l.setBackground(new Color(0,0,0));l.setForeground(new Color(255,120,120));}
+            else if(completed){l.setBackground(new Color(20,60,30));l.setForeground(new Color(80,200,120));}
+            else if(overdue){l.setBackground(new Color(90,20,20));l.setForeground(new Color(255,120,120));}
+            else{l.setBackground(AppTheme.BG_SIDEBAR);l.setForeground(AppTheme.TEXT_PRIMARY);}
             return l;
         }
     }

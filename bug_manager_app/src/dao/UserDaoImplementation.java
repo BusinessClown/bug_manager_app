@@ -46,12 +46,14 @@ public class UserDaoImplementation implements UserDaoInterface {
     public List<User> findAll() {
         List<User> users = new ArrayList<>();
         try {
-            ResultSet rs = DatabaseConnection.getConnection().prepareStatement("SELECT * FROM users ORDER BY fullname").executeQuery();
+            ResultSet rs = DatabaseConnection.getConnection()
+                .prepareStatement("SELECT * FROM users ORDER BY fullname").executeQuery();
             while (rs.next()) users.add(mapRowToUser(rs));
         } catch (SQLException e) { e.printStackTrace(); }
         return users;
     }
 
+    /** Updates all user fields EXCEPT password. */
     @Override
     public void update(User user) {
         String sql = "UPDATE users SET username=?, fullname=?, email=?, is_admin=?, job_title=? WHERE id=?";
@@ -68,10 +70,26 @@ public class UserDaoImplementation implements UserDaoInterface {
         } catch (SQLException e) { e.printStackTrace(); }
     }
 
+    /**
+     * Updates ONLY the password column for the given user id.
+     * Call this after hashing the new password.
+     */
+    public void updatePassword(long userId, String hashedPassword) {
+        String sql = "UPDATE users SET password=? WHERE id=?";
+        try {
+            Connection conn = DatabaseConnection.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setString(1, hashedPassword);
+            stmt.setLong(2, userId);
+            stmt.executeUpdate();
+        } catch (SQLException e) { e.printStackTrace(); }
+    }
+
     @Override
     public void delete(long id) {
         try {
-            PreparedStatement stmt = DatabaseConnection.getConnection().prepareStatement("DELETE FROM users WHERE id=?");
+            PreparedStatement stmt = DatabaseConnection.getConnection()
+                .prepareStatement("DELETE FROM users WHERE id=?");
             stmt.setLong(1, id);
             stmt.executeUpdate();
         } catch (SQLException e) { e.printStackTrace(); }

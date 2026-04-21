@@ -12,17 +12,18 @@ public class BugReadPanel extends JPanel {
 
     private final BugListView parent;
 
-    private JLabel lblId        = val("");
-    private JLabel lblTitle     = val("");
-    private JLabel lblSubmitted = val("");
-    private JLabel lblStatus    = val("");
-    private JLabel lblPriority  = val("");
-    private JLabel lblSeverity  = val("");
-    private JLabel lblCategory  = val("");
-    private JLabel lblProject   = val("");
-    private JLabel lblCreated   = val("");
-    private JLabel lblDue       = val("");
-    private JTextArea txtDesc   = new JTextArea();
+    private JLabel lblId          = val("");
+    private JLabel lblTitle       = val("");
+    private JLabel lblSubmitted   = val("");
+    private JLabel lblLastEdited  = val("");
+    private JLabel lblStatus      = val("");
+    private JLabel lblPriority    = val("");
+    private JLabel lblSeverity    = val("");
+    private JLabel lblCategory    = val("");
+    private JLabel lblProject     = val("");
+    private JLabel lblCreated     = val("");
+    private JLabel lblDue         = val("");
+    private JTextArea txtDesc     = new JTextArea();
 
     private JButton btnBack, btnEdit;
 
@@ -57,16 +58,17 @@ public class BugReadPanel extends JPanel {
         card.setBorder(BorderFactory.createCompoundBorder(AppTheme.BORDER_PANEL, new EmptyBorder(24,36,24,36)));
 
         int row = 0;
-        row = addRow(card, row, "Bug ID",       lblId);
-        row = addRow(card, row, "Title",        lblTitle);
-        row = addRow(card, row, "Submitted By", lblSubmitted);
-        row = addRow(card, row, "Status",       lblStatus);
-        row = addRow(card, row, "Priority",     lblPriority);
-        row = addRow(card, row, "Severity",     lblSeverity);
-        row = addRow(card, row, "Category",     lblCategory);
-        row = addRow(card, row, "Project",      lblProject);
-        row = addRow(card, row, "Created",      lblCreated);
-        row = addRow(card, row, "Due Date",     lblDue);
+        row = addRow(card, row, "Bug ID",         lblId);
+        row = addRow(card, row, "Title",          lblTitle);
+        row = addRow(card, row, "Submitted By",   lblSubmitted);
+        row = addRow(card, row, "Last Edited By", lblLastEdited);
+        row = addRow(card, row, "Status",         lblStatus);
+        row = addRow(card, row, "Priority",       lblPriority);
+        row = addRow(card, row, "Severity",       lblSeverity);
+        row = addRow(card, row, "Category",       lblCategory);
+        row = addRow(card, row, "Project",        lblProject);
+        row = addRow(card, row, "Created",        lblCreated);
+        row = addRow(card, row, "Due Date",       lblDue);
 
         GridBagConstraints dlc = gbc(0, row, 1); dlc.insets = new Insets(16,0,4,0);
         card.add(lbl("Description"), dlc); row++;
@@ -93,7 +95,26 @@ public class BugReadPanel extends JPanel {
     public void populate(Bug bug) {
         lblId.setText("#" + bug.getId());
         lblTitle.setText(bug.getTitle());
-        lblSubmitted.setText(bug.getUser().getFullname() + " (@" + bug.getUser().getUsername() + ")");
+
+        // Submitted by — show "Unknown User" when the original submitter was deleted
+        if (bug.getUser() == null) {
+            lblSubmitted.setText("Unknown User");
+            lblSubmitted.setForeground(AppTheme.TEXT_MUTED);
+        } else {
+            lblSubmitted.setText(bug.getUser().getFullname() + " (@" + bug.getUser().getUsername() + ")");
+            lblSubmitted.setForeground(AppTheme.TEXT_PRIMARY);
+        }
+
+        // Last edited by
+        if (bug.getLastEditedBy() == null) {
+            lblLastEdited.setText("—");
+            lblLastEdited.setForeground(AppTheme.TEXT_MUTED);
+        } else {
+            lblLastEdited.setText(bug.getLastEditedBy().getFullname()
+                + " (@" + bug.getLastEditedBy().getUsername() + ")");
+            lblLastEdited.setForeground(AppTheme.ACCENT);
+        }
+
         lblPriority.setText(bug.getPriority().name());
         lblSeverity.setText(bug.getSeverity() != null ? bug.getSeverity().name() : "—");
         lblCategory.setText(bug.getCategory() != null ? bug.getCategory().name() : "—");

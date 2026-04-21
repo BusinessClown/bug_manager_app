@@ -5,14 +5,15 @@ import java.time.LocalDate;
 public class Bug {
 
     private long id;
-    private User user;
+    private User user;           // submitter — may be null if the user was deleted
+    private User lastEditedBy;   // last person to save an edit — may be null
     private String title, description;
     private LocalDate createDate, dueDate;
     private BugStatus   status;
     private BugPriority priority;
     private BugSeverity severity;
     private BugCategory category;
-    private Project     project;   // NEW
+    private Project     project;
 
     public Bug() { super(); }
 
@@ -36,6 +37,8 @@ public class Bug {
     public void        setId(long id)      { this.id = id; }
     public User        getUser()           { return user; }
     public void        setUser(User u)     { this.user = u; }
+    public User        getLastEditedBy()                  { return lastEditedBy; }
+    public void        setLastEditedBy(User u)            { this.lastEditedBy = u; }
     public String      getTitle()          { return title; }
     public void        setTitle(String t)  { this.title = t; }
     public String      getDescription()    { return description; }
@@ -65,5 +68,14 @@ public class Bug {
         return status != BugStatus.COMPLETED
                 && dueDate != null
                 && dueDate.isBefore(LocalDate.now());
+    }
+
+    /**
+     * Returns a display label for the submitter.
+     * Falls back to "Unknown User" when the original submitter was deleted.
+     */
+    public String getSubmitterDisplay() {
+        if (user == null) return "Unknown User";
+        return user.getFullname();
     }
 }

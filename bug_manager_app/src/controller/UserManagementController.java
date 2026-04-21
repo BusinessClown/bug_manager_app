@@ -23,8 +23,8 @@ public class UserManagementController {
     private final BugDaoImplentation    bugDao      = new BugDaoImplentation();
     private final BugService            bugService  = new BugService(bugDao);
 
-    private List<User> allUsers;     // full list from DB
-    private List<User> currentUsers; // currently displayed (after filter)
+    private List<User> allUsers;
+    private List<User> currentUsers;
 
     public UserManagementController(UserManagementPanel panel, BugListView parentView) {
         this.panel      = panel;
@@ -87,7 +87,8 @@ public class UserManagementController {
         User user = getSelectedUser();
         if (user == null) { parentView.showError("Please select a user to delete."); return; }
         if (BugListController.showThemedConfirm(parentView, "Delete User",
-                "Delete user \"" + user.getUsername() + "\"?\nThis will also delete all their bugs.")) {
+                "Delete user \"" + user.getUsername() + "\"?\n" +
+                "Their submitted bugs will be kept and shown as 'Unknown User'.")) {
             userService.deleteUser(user.getId());
             parentView.restoreSidebar();
             loadUsers();
@@ -107,12 +108,17 @@ public class UserManagementController {
         if (editMode) {
             User user = form.getCurrentUser();
             if (user == null) { parentView.showError("No user selected for editing."); return; }
+
+            // Update profile fields (no password column touched here)
             String error = userService.adminUpdateUser(user, fullname, username, email, isAdmin, jobTitle);
             if (error != null) { parentView.showError(error); return; }
+
+            // If a new password was provided, update it separately via its own SQL
             if (!password.isEmpty()) {
-                user.setPassword(PasswordUtil.hash(password));
-                userDao.update(user);
+                String hashed = PasswordUtil.hash(password);
+                userDao.updatePassword(user.getId(), hashed);
             }
+
             parentView.showSuccess("User \"" + username + "\" updated.");
         } else {
             if (password.isEmpty()) { parentView.showError("Password is required for new users."); return; }
