@@ -59,18 +59,17 @@ public class UserReadPanel extends JPanel {
         row = addRow(info, row, "Full Name",  lblFullName);
         row = addRow(info, row, "Email",      lblEmail);
         row = addRow(info, row, "Job Title",  lblJobTitle);
-        addRow(info,  row, "Admin",      lblAdmin);
+        addRow(info, row, "Admin", lblAdmin);
         content.add(info, BorderLayout.NORTH);
 
-        // Bugs table — with overdue highlighting
+        // Bugs table — uses AppTheme row-state colours so it always matches the active theme
         JLabel bugsHeading = AppTheme.heading("Bugs Submitted by This User");
         bugsHeading.setBorder(new EmptyBorder(8,0,6,0));
 
         bugTableModel = new DefaultTableModel(new Object[]{"ID","Title","Status","Due Date"}, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
-        // Full color renderer: completed=green, closed+completed=green text,
-        // closed only=black bg/red text, overdue=dark red
+
         bugTable = new JTable(bugTableModel) {
             @Override public Component prepareRenderer(TableCellRenderer r, int row, int col) {
                 Component c = super.prepareRenderer(r, row, col);
@@ -78,31 +77,14 @@ public class UserReadPanel extends JPanel {
                     c.setBackground(AppTheme.TABLE_SEL);
                     c.setForeground(Color.WHITE);
                 } else {
-                    boolean closedProject = false;
-                    boolean completed = false;
-                    boolean overdue = false;
+                    boolean closed = false, completed = false, overdue = false;
                     if (row < currentBugs.size()) {
                         Bug bug = currentBugs.get(row);
-                        closedProject = bug.isInClosedProject();
+                        closed    = bug.isInClosedProject();
                         completed = bug.getStatus() == model.BugStatus.COMPLETED;
-                        overdue = bug.isOverdue();
+                        overdue   = bug.isOverdue();
                     }
-                    if (closedProject && completed) {
-                        c.setBackground(new Color(0, 0, 0));
-                        c.setForeground(new Color(80, 200, 120));
-                    } else if (closedProject) {
-                        c.setBackground(new Color(0, 0, 0));
-                        c.setForeground(new Color(255, 120, 120));
-                    } else if (completed) {
-                        c.setBackground(new Color(20, 60, 30));
-                        c.setForeground(new Color(80, 200, 120));
-                    } else if (overdue) {
-                        c.setBackground(new Color(90, 20, 20));
-                        c.setForeground(new Color(255, 120, 120));
-                    } else {
-                        c.setBackground(row % 2 == 0 ? AppTheme.BG_PANEL : AppTheme.TABLE_ALT);
-                        c.setForeground(AppTheme.TEXT_PRIMARY);
-                    }
+                    BugListView.applyRowColors(c, closed, completed, overdue, row);
                 }
                 if (c instanceof JLabel) ((JLabel) c).setBorder(new EmptyBorder(4, 10, 4, 10));
                 return c;

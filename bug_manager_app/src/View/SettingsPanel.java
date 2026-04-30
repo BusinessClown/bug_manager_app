@@ -5,7 +5,6 @@ import java.awt.event.*;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.colorchooser.AbstractColorChooserPanel;
 
 import controller.SettingsController;
 import model.User;
@@ -19,7 +18,7 @@ import util.UserPreferences;
  *                       editable:  email, job title
  *                       separate:  change password
  *   🎨 Theme          — built-in presets + accent chips + custom theme list
- *   🔧 Advanced       — full 14-colour editor, save/name custom themes
+ *   🔧 Advanced       — grouped colour editor (UI chrome, row states), save/name custom themes
  */
 public class SettingsPanel extends JPanel {
 
@@ -55,18 +54,22 @@ public class SettingsPanel extends JPanel {
 
     // ── Advanced editor ───────────────────────────────────────────────────────
     private ThemeDefinition advancedDraft;
-    private JButton[]       colorSwatches;
     private JTextField      txtThemeName;
 
-    private static final String[] ADVANCED_LABELS = {
-        "Background (Main)",    "Background (Panel)",
-        "Background (Sidebar)", "Background (Header)",
-        "Accent",               "Accent Hover",
-        "Danger",               "Success",
-        "Warning",              "Text Primary",
-        "Text Muted",           "Border",
-        "Table Alternate Row",  "Table Selection"
+    // ── UI Chrome swatches (14 colours, indices 0–13) ─────────────────────────
+    private JButton[] chromeSwatches;
+    private static final String[] CHROME_LABELS = {
+        "Background — Main Window",    "Background — Panels & Cards",
+        "Background — Sidebar",        "Background — Header & Action Bars",
+        "Accent Colour",               "Accent Hover",
+        "Danger (errors, deletes)",    "Success (confirmations)",
+        "Warning",                     "Text — Primary",
+        "Text — Muted / Labels",       "Border Lines",
+        "Table — Alternate Row",       "Table — Selected Row"
     };
+
+    // ── Row state swatches (6 colours, indices 0–5, 2 per state) ─────────────
+    private JButton[] rowStateSwatches; // [closedBg, closedFg, overdueBg, overdueFg, completedBg, completedFg]
 
     // ═════════════════════════════════════════════════════════════════════════
     public SettingsPanel(BugListView parent) {
@@ -181,10 +184,8 @@ public class SettingsPanel extends JPanel {
         content.setBackground(AppTheme.BG_DARK);
         content.setBorder(new EmptyBorder(24,40,24,40));
 
-        // ── Profile card ─────────────────────────────────────────────────────
         JPanel profileCard = sectionCard("Profile");
 
-        // Read-only block
         JPanel roGrid = new JPanel(new GridBagLayout());
         roGrid.setOpaque(false);
         roGrid.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -195,7 +196,6 @@ public class SettingsPanel extends JPanel {
         rr = addRoRow(roGrid, rr, "Username",   lblRoUsername);
              addRoRow(roGrid, rr, "Full Name",  lblRoFullName);
 
-        // Visual separator between read-only and editable sections
         JSeparator sep = new JSeparator();
         sep.setForeground(AppTheme.BORDER_COLOR);
         sep.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -206,7 +206,6 @@ public class SettingsPanel extends JPanel {
         profileCard.add(sep);
         profileCard.add(Box.createVerticalStrut(12));
 
-        // Editable fields
         addField(profileCard, "Email *",   txtEmail);
         addField(profileCard, "Job Title", txtJobTitle);
 
@@ -220,7 +219,6 @@ public class SettingsPanel extends JPanel {
         profileCard.add(Box.createVerticalStrut(6));
         profileCard.add(btnSave);
 
-        // ── Password card ─────────────────────────────────────────────────────
         JPanel pwdCard = sectionCard("Change Password");
         addField(pwdCard, "Current Password",    txtCurrentPwd);
         addField(pwdCard, "New Password",         txtNewPwd);
@@ -248,17 +246,14 @@ public class SettingsPanel extends JPanel {
         return scroll;
     }
 
-    /** Add a read-only label row to the profile grid. */
     private int addRoRow(JPanel grid, int row, String labelText, JLabel value) {
         GridBagConstraints lc = new GridBagConstraints();
         lc.gridx = 0; lc.gridy = row; lc.anchor = GridBagConstraints.WEST;
         lc.insets = new Insets(3,0,3,20);
-
         GridBagConstraints vc = new GridBagConstraints();
         vc.gridx = 1; vc.gridy = row; vc.anchor = GridBagConstraints.WEST;
         vc.fill = GridBagConstraints.HORIZONTAL; vc.weightx = 1;
         vc.insets = new Insets(3,0,3,0);
-
         grid.add(fieldLbl(labelText), lc);
         grid.add(value, vc);
         return row + 1;
@@ -274,7 +269,6 @@ public class SettingsPanel extends JPanel {
 
         JPanel themeCard = sectionCard("Choose Theme");
 
-        // Built-in presets
         JLabel lblBuiltIn = fieldLbl("Built-in Presets");
         lblBuiltIn.setAlignmentX(Component.LEFT_ALIGNMENT);
         lblBuiltIn.setBorder(new EmptyBorder(0,0,8,0));
@@ -286,7 +280,6 @@ public class SettingsPanel extends JPanel {
         for (ThemeDefinition t : ThemeDefinition.builtIns()) presetGrid.add(makeThemeButton(t));
         themeCard.add(presetGrid);
 
-        // Custom themes (if any saved)
         List<ThemeDefinition> customs = UserPreferences.loadCustomThemes();
         if (!customs.isEmpty()) {
             themeCard.add(Box.createVerticalStrut(20));
@@ -302,7 +295,6 @@ public class SettingsPanel extends JPanel {
             themeCard.add(customGrid);
         }
 
-        // Quick-accent chips
         themeCard.add(Box.createVerticalStrut(20));
         JLabel lblAccent = fieldLbl("Quick Accent  (Dark base, swap accent colour)");
         lblAccent.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -427,7 +419,7 @@ public class SettingsPanel extends JPanel {
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // ADVANCED EDITOR CARD
+    // ADVANCED EDITOR CARD — grouped colour editor
     // ════════════════════════════════════════════════════════════════════════
     private JScrollPane buildAdvancedCard() {
         JPanel content = new JPanel();
@@ -435,53 +427,73 @@ public class SettingsPanel extends JPanel {
         content.setBackground(AppTheme.BG_DARK);
         content.setBorder(new EmptyBorder(24,40,24,40));
 
-        JPanel card = sectionCard("Advanced Theme Editor");
-
-        // Theme name row
+        // ── Theme Name ─────────────────────────────────────────────────────────
+        JPanel nameCard = sectionCard("Theme Name");
         JPanel nameRow = new JPanel(new BorderLayout(10,0));
         nameRow.setOpaque(false);
         nameRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         nameRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         txtThemeName = new JTextField();
         styleTextField(txtThemeName);
-        nameRow.add(fieldLbl("Theme Name:"), BorderLayout.WEST);
-        nameRow.add(txtThemeName,            BorderLayout.CENTER);
-        card.add(nameRow);
-        card.add(Box.createVerticalStrut(16));
+        nameRow.add(fieldLbl("Name:"), BorderLayout.WEST);
+        nameRow.add(txtThemeName,      BorderLayout.CENTER);
+        nameCard.add(nameRow);
+        content.add(nameCard);
+        content.add(Box.createVerticalStrut(16));
 
-        // 2-column colour swatch grid
-        JPanel grid = new JPanel(new GridBagLayout());
-        grid.setOpaque(false);
-        grid.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // ── UI Chrome ──────────────────────────────────────────────────────────
+        JPanel chromeCard = sectionCard("UI Chrome — Backgrounds, Accents & Text");
+        chromeCard.add(AppTheme.muted("Controls the general look of windows, panels, buttons and text."));
+        chromeCard.add(Box.createVerticalStrut(12));
+        chromeSwatches = new JButton[CHROME_LABELS.length];
+        chromeCard.add(buildSwatchGrid(chromeSwatches, CHROME_LABELS, this::pickChromeColor));
+        content.add(chromeCard);
+        content.add(Box.createVerticalStrut(16));
 
-        colorSwatches = new JButton[ADVANCED_LABELS.length];
-        for (int i = 0; i < ADVANCED_LABELS.length; i++) {
-            int col = i % 2, row = i / 2;
+        // ── Row States ─────────────────────────────────────────────────────────
+        rowStateSwatches = new JButton[6];
 
-            GridBagConstraints lc = new GridBagConstraints();
-            lc.gridx = col*2; lc.gridy = row;
-            lc.anchor = GridBagConstraints.WEST;
-            lc.insets = new Insets(4,0,4,10);
+        // Closed-project rows
+        JPanel closedCard = sectionCard("Closed Project Rows");
+        closedCard.add(wrapMuted("Rows highlighted when a bug belongs to a project that has been closed."));
+        closedCard.add(Box.createVerticalStrut(10));
+        closedCard.add(buildPairRow(rowStateSwatches, 0, "Row Background", 1, "Row Text Colour", this::pickRowStateColor));
+        closedCard.add(Box.createVerticalStrut(4));
+        closedCard.add(buildStatePreviewRow(
+            () -> rowStateSwatches[0].getBackground(),
+            () -> rowStateSwatches[1].getBackground(),
+            "Example: Bug Title [Project Closed]"));
+        content.add(closedCard);
+        content.add(Box.createVerticalStrut(12));
 
-            GridBagConstraints sc = new GridBagConstraints();
-            sc.gridx = col*2+1; sc.gridy = row;
-            sc.insets = new Insets(4,0,4,28);
+        // Overdue rows
+        JPanel overdueCard = sectionCard("Overdue Bug Rows");
+        overdueCard.add(wrapMuted("Rows highlighted when a bug's due date has passed and it is not yet completed."));
+        overdueCard.add(Box.createVerticalStrut(10));
+        overdueCard.add(buildPairRow(rowStateSwatches, 2, "Row Background", 3, "Row Text Colour", this::pickRowStateColor));
+        overdueCard.add(Box.createVerticalStrut(4));
+        overdueCard.add(buildStatePreviewRow(
+            () -> rowStateSwatches[2].getBackground(),
+            () -> rowStateSwatches[3].getBackground(),
+            "Example: Bug Title [Overdue]"));
+        content.add(overdueCard);
+        content.add(Box.createVerticalStrut(12));
 
-            grid.add(fieldLbl(ADVANCED_LABELS[i]), lc);
+        // Completed rows
+        JPanel completedCard = sectionCard("Completed Bug Rows");
+        completedCard.add(wrapMuted("Rows highlighted when a bug's status is COMPLETED."));
+        completedCard.add(Box.createVerticalStrut(10));
+        completedCard.add(buildPairRow(rowStateSwatches, 4, "Row Background", 5, "Row Text Colour", this::pickRowStateColor));
+        completedCard.add(Box.createVerticalStrut(4));
+        completedCard.add(buildStatePreviewRow(
+            () -> rowStateSwatches[4].getBackground(),
+            () -> rowStateSwatches[5].getBackground(),
+            "Example: Bug Title [Completed]"));
+        content.add(completedCard);
+        content.add(Box.createVerticalStrut(16));
 
-            final int idx = i;
-            JButton swatch = new JButton();
-            swatch.setPreferredSize(new Dimension(80, 28));
-            swatch.setOpaque(true); swatch.setFocusPainted(false);
-            swatch.setBorder(BorderFactory.createLineBorder(AppTheme.BORDER_COLOR));
-            swatch.setToolTipText("Click to pick colour");
-            swatch.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            swatch.addActionListener(e -> pickColor(idx));
-            colorSwatches[i] = swatch;
-            grid.add(swatch, sc);
-        }
-        card.add(grid);
-        card.add(Box.createVerticalStrut(16));
+        // ── Controls ──────────────────────────────────────────────────────────
+        JPanel ctrlCard = sectionCard("Apply");
 
         // "Start from" preset row
         JPanel startRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
@@ -493,25 +505,26 @@ public class SettingsPanel extends JPanel {
             bBtn.addActionListener(e -> loadDraftIntoAdvanced(b.clone()));
             startRow.add(bBtn);
         }
-        card.add(startRow);
-        card.add(Box.createVerticalStrut(14));
+        ctrlCard.add(startRow);
+        ctrlCard.add(Box.createVerticalStrut(14));
 
         lblAdvancedStatus.setAlignmentX(Component.LEFT_ALIGNMENT);
-        card.add(lblAdvancedStatus);
-        card.add(Box.createVerticalStrut(6));
+        ctrlCard.add(lblAdvancedStatus);
+        ctrlCard.add(Box.createVerticalStrut(6));
 
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         btnRow.setOpaque(false);
         btnRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        JButton btnPreview = AppTheme.secondaryButton("Preview");
+        JButton btnPreview = AppTheme.secondaryButton("▶  Preview");
         JButton btnSave    = AppTheme.primaryButton("Save & Apply");
         btnPreview.addActionListener(e -> previewDraft());
         btnSave.addActionListener(e    -> controller.onSaveCustomTheme(buildDraftFromUI(), true));
         btnRow.add(btnPreview);
         btnRow.add(btnSave);
-        card.add(btnRow);
+        ctrlCard.add(btnRow);
 
-        content.add(card);
+        content.add(ctrlCard);
+        content.add(Box.createVerticalGlue());
 
         // Seed draft from current theme
         advancedDraft = AppTheme.getCurrentTheme().clone();
@@ -525,20 +538,124 @@ public class SettingsPanel extends JPanel {
         return scroll;
     }
 
-    // ── Colour picker dialog ──────────────────────────────────────────────────
-    private void pickColor(int idx) {
-        Color initial = colorSwatches[idx].getBackground();
-        // This creates the dialog, manages OK/Cancel, and handles layout automatically
-        Color picked = JColorChooser.showDialog(this, "Pick: " + ADVANCED_LABELS[idx], initial);
-        
+    // ── Build a 2-column swatch grid ──────────────────────────────────────────
+    private JPanel buildSwatchGrid(JButton[] swatches, String[] labels, java.util.function.IntConsumer picker) {
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
+        grid.setAlignmentX(Component.LEFT_ALIGNMENT);
+        for (int i = 0; i < labels.length; i++) {
+            int col = i % 2, row = i / 2;
+            GridBagConstraints lc = new GridBagConstraints();
+            lc.gridx = col*3; lc.gridy = row; lc.anchor = GridBagConstraints.WEST;
+            lc.insets = new Insets(4, col == 1 ? 28 : 0, 4, 8);
+            GridBagConstraints sc = new GridBagConstraints();
+            sc.gridx = col*3+1; sc.gridy = row; sc.insets = new Insets(4, 0, 4, col == 0 ? 8 : 0);
+            grid.add(fieldLbl(labels[i]), lc);
+            final int idx = i;
+            JButton swatch = makeSwatch(null, () -> picker.accept(idx));
+            swatches[i] = swatch;
+            grid.add(swatch, sc);
+            // Spacer column so the two halves don't mash together
+            if (col == 0) {
+                GridBagConstraints sp = new GridBagConstraints();
+                sp.gridx = 2; sp.gridy = row; sp.weightx = 0.05;
+                grid.add(Box.createHorizontalStrut(20), sp);
+            } else {
+                GridBagConstraints wx = new GridBagConstraints();
+                wx.gridx = col*3+2; wx.gridy = row; wx.weightx = 1;
+                grid.add(Box.createHorizontalStrut(1), wx);
+            }
+        }
+        return grid;
+    }
+
+    // ── Build a labelled pair of swatches (bg + fg) ───────────────────────────
+    private JPanel buildPairRow(JButton[] swatches, int bgIdx, String bgLabel,
+                                int fgIdx, String fgLabel,
+                                java.util.function.IntConsumer picker) {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 0));
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        row.add(fieldLbl(bgLabel));
+        JButton bgSwatch = makeSwatch(null, () -> picker.accept(bgIdx));
+        swatches[bgIdx] = bgSwatch;
+        row.add(bgSwatch);
+
+        row.add(Box.createHorizontalStrut(20));
+        row.add(fieldLbl(fgLabel));
+        JButton fgSwatch = makeSwatch(null, () -> picker.accept(fgIdx));
+        swatches[fgIdx] = fgSwatch;
+        row.add(fgSwatch);
+
+        return row;
+    }
+
+    /** A live preview strip showing text on background using the given colour suppliers. */
+    private JPanel buildStatePreviewRow(java.util.function.Supplier<Color> bgSupplier,
+                                        java.util.function.Supplier<Color> fgSupplier,
+                                        String sampleText) {
+        JPanel preview = new JPanel(new BorderLayout()) {
+            @Override protected void paintComponent(Graphics g) {
+                g.setColor(bgSupplier.get());
+                g.fillRect(0,0,getWidth(),getHeight());
+            }
+        };
+        preview.setAlignmentX(Component.LEFT_ALIGNMENT);
+        preview.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        JLabel lbl = new JLabel("  " + sampleText) {
+            @Override public void paintComponent(Graphics g) {
+                setForeground(fgSupplier.get());
+                super.paintComponent(g);
+            }
+        };
+        lbl.setFont(AppTheme.FONT_BODY);
+        preview.add(lbl, BorderLayout.CENTER);
+        preview.setOpaque(false);
+        return preview;
+    }
+
+    private JButton makeSwatch(Color initial, Runnable onClick) {
+        JButton swatch = new JButton();
+        if (initial != null) swatch.setBackground(initial);
+        swatch.setPreferredSize(new Dimension(80, 28));
+        swatch.setOpaque(true); swatch.setFocusPainted(false);
+        swatch.setBorder(BorderFactory.createLineBorder(AppTheme.BORDER_COLOR));
+        swatch.setToolTipText("Click to pick colour");
+        swatch.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        swatch.addActionListener(e -> onClick.run());
+        return swatch;
+    }
+
+    // ── Colour picker handlers ────────────────────────────────────────────────
+    private void pickChromeColor(int idx) {
+        Color picked = JColorChooser.showDialog(this, "Pick: " + CHROME_LABELS[idx],
+            chromeSwatches[idx].getBackground());
         if (picked != null) {
-            colorSwatches[idx].setBackground(picked);
-            colorSwatches[idx].setToolTipText(AppTheme.toHex(picked));
-            applySwatchToDraft(idx, picked);
+            chromeSwatches[idx].setBackground(picked);
+            chromeSwatches[idx].setToolTipText(AppTheme.toHex(picked));
+            applyChromeSwatchToDraft(idx, picked);
         }
     }
 
+    private void pickRowStateColor(int idx) {
+        String[] rowLabels = {
+            "Closed Row — Background", "Closed Row — Text Colour",
+            "Overdue Row — Background","Overdue Row — Text Colour",
+            "Completed Row — Background","Completed Row — Text Colour"
+        };
+        Color picked = JColorChooser.showDialog(this, "Pick: " + rowLabels[idx],
+            rowStateSwatches[idx].getBackground());
+        if (picked != null) {
+            rowStateSwatches[idx].setBackground(picked);
+            rowStateSwatches[idx].setToolTipText(AppTheme.toHex(picked));
+            applyRowStateSwatchToDraft(idx, picked);
+            // Force preview panels to repaint
+            SwingUtilities.invokeLater(() -> repaint());
+        }
+    }
 
+    // ── Draft sync helpers ────────────────────────────────────────────────────
     public void loadDraftIntoAdvanced(ThemeDefinition t) {
         advancedDraft = t.clone();
         advancedDraft.builtIn = false;
@@ -548,35 +665,51 @@ public class SettingsPanel extends JPanel {
     }
 
     private void refreshAdvancedSwatches() {
-        if (colorSwatches == null || advancedDraft == null) return;
-        Color[] colors = draftToArray(advancedDraft);
-        for (int i = 0; i < colorSwatches.length; i++) {
-            colorSwatches[i].setBackground(colors[i]);
-            colorSwatches[i].setToolTipText(AppTheme.toHex(colors[i]));
+        if (advancedDraft == null) return;
+        if (chromeSwatches != null) {
+            Color[] chrome = chromeDraftToArray(advancedDraft);
+            for (int i = 0; i < chromeSwatches.length; i++) {
+                chromeSwatches[i].setBackground(chrome[i]);
+                chromeSwatches[i].setToolTipText(AppTheme.toHex(chrome[i]));
+            }
+        }
+        if (rowStateSwatches != null) {
+            Color[] rs = rowStateDraftToArray(advancedDraft);
+            for (int i = 0; i < rowStateSwatches.length; i++) {
+                rowStateSwatches[i].setBackground(rs[i]);
+                rowStateSwatches[i].setToolTipText(AppTheme.toHex(rs[i]));
+            }
         }
     }
 
     private void previewDraft() {
-    	controller.rebuildWithTheme(buildDraftFromUI(), CARD_ADVANCED);
-        parent.showInfo("Previewing — save to keep it.");
+        controller.onPreviewTheme(buildDraftFromUI());
     }
 
-    private ThemeDefinition buildDraftFromUI() {
-        if (colorSwatches != null) {
-            advancedDraft.bgDark      = colorSwatches[0].getBackground();
-            advancedDraft.bgPanel     = colorSwatches[1].getBackground();
-            advancedDraft.bgSidebar   = colorSwatches[2].getBackground();
-            advancedDraft.bgHeader    = colorSwatches[3].getBackground();
-            advancedDraft.accent      = colorSwatches[4].getBackground();
-            advancedDraft.accentHover = colorSwatches[5].getBackground();
-            advancedDraft.danger      = colorSwatches[6].getBackground();
-            advancedDraft.success     = colorSwatches[7].getBackground();
-            advancedDraft.warning     = colorSwatches[8].getBackground();
-            advancedDraft.textPrimary = colorSwatches[9].getBackground();
-            advancedDraft.textMuted   = colorSwatches[10].getBackground();
-            advancedDraft.borderColor = colorSwatches[11].getBackground();
-            advancedDraft.tableAlt    = colorSwatches[12].getBackground();
-            advancedDraft.tableSel    = colorSwatches[13].getBackground();
+    ThemeDefinition buildDraftFromUI() {
+        if (chromeSwatches != null) {
+            advancedDraft.bgDark      = chromeSwatches[0].getBackground();
+            advancedDraft.bgPanel     = chromeSwatches[1].getBackground();
+            advancedDraft.bgSidebar   = chromeSwatches[2].getBackground();
+            advancedDraft.bgHeader    = chromeSwatches[3].getBackground();
+            advancedDraft.accent      = chromeSwatches[4].getBackground();
+            advancedDraft.accentHover = chromeSwatches[5].getBackground();
+            advancedDraft.danger      = chromeSwatches[6].getBackground();
+            advancedDraft.success     = chromeSwatches[7].getBackground();
+            advancedDraft.warning     = chromeSwatches[8].getBackground();
+            advancedDraft.textPrimary = chromeSwatches[9].getBackground();
+            advancedDraft.textMuted   = chromeSwatches[10].getBackground();
+            advancedDraft.borderColor = chromeSwatches[11].getBackground();
+            advancedDraft.tableAlt    = chromeSwatches[12].getBackground();
+            advancedDraft.tableSel    = chromeSwatches[13].getBackground();
+        }
+        if (rowStateSwatches != null) {
+            advancedDraft.closedBg    = rowStateSwatches[0].getBackground();
+            advancedDraft.closedFg    = rowStateSwatches[1].getBackground();
+            advancedDraft.overdueBg   = rowStateSwatches[2].getBackground();
+            advancedDraft.overdueFg   = rowStateSwatches[3].getBackground();
+            advancedDraft.completedBg = rowStateSwatches[4].getBackground();
+            advancedDraft.completedFg = rowStateSwatches[5].getBackground();
         }
         advancedDraft.name = (txtThemeName != null && !txtThemeName.getText().isBlank())
             ? txtThemeName.getText().trim() : "My Custom Theme";
@@ -584,26 +717,37 @@ public class SettingsPanel extends JPanel {
         return advancedDraft;
     }
 
-    private void applySwatchToDraft(int idx, Color c) {
+    private void applyChromeSwatchToDraft(int idx, Color c) {
         switch (idx) {
             case 0  -> advancedDraft.bgDark      = c;
-            case 1  -> advancedDraft.bgPanel     = c;
-            case 2  -> advancedDraft.bgSidebar   = c;
-            case 3  -> advancedDraft.bgHeader    = c;
-            case 4  -> advancedDraft.accent      = c;
-            case 5  -> advancedDraft.accentHover = c;
-            case 6  -> advancedDraft.danger      = c;
-            case 7  -> advancedDraft.success     = c;
-            case 8  -> advancedDraft.warning     = c;
-            case 9  -> advancedDraft.textPrimary = c;
-            case 10 -> advancedDraft.textMuted   = c;
-            case 11 -> advancedDraft.borderColor = c;
-            case 12 -> advancedDraft.tableAlt    = c;
-            case 13 -> advancedDraft.tableSel    = c;
+            case 1  -> advancedDraft.bgPanel      = c;
+            case 2  -> advancedDraft.bgSidebar    = c;
+            case 3  -> advancedDraft.bgHeader     = c;
+            case 4  -> advancedDraft.accent       = c;
+            case 5  -> advancedDraft.accentHover  = c;
+            case 6  -> advancedDraft.danger       = c;
+            case 7  -> advancedDraft.success      = c;
+            case 8  -> advancedDraft.warning      = c;
+            case 9  -> advancedDraft.textPrimary  = c;
+            case 10 -> advancedDraft.textMuted    = c;
+            case 11 -> advancedDraft.borderColor  = c;
+            case 12 -> advancedDraft.tableAlt     = c;
+            case 13 -> advancedDraft.tableSel     = c;
         }
     }
 
-    private Color[] draftToArray(ThemeDefinition t) {
+    private void applyRowStateSwatchToDraft(int idx, Color c) {
+        switch (idx) {
+            case 0 -> advancedDraft.closedBg    = c;
+            case 1 -> advancedDraft.closedFg    = c;
+            case 2 -> advancedDraft.overdueBg   = c;
+            case 3 -> advancedDraft.overdueFg   = c;
+            case 4 -> advancedDraft.completedBg = c;
+            case 5 -> advancedDraft.completedFg = c;
+        }
+    }
+
+    private Color[] chromeDraftToArray(ThemeDefinition t) {
         return new Color[]{
             t.bgDark, t.bgPanel, t.bgSidebar, t.bgHeader,
             t.accent, t.accentHover,
@@ -613,24 +757,33 @@ public class SettingsPanel extends JPanel {
         };
     }
 
+    private Color[] rowStateDraftToArray(ThemeDefinition t) {
+        Color[] def = {
+            new Color(0,0,0), new Color(255,120,120),
+            new Color(90,20,20), new Color(255,120,120),
+            new Color(20,60,30), new Color(80,200,120)
+        };
+        return new Color[]{
+            t.closedBg    != null ? t.closedBg    : def[0],
+            t.closedFg    != null ? t.closedFg    : def[1],
+            t.overdueBg   != null ? t.overdueBg   : def[2],
+            t.overdueFg   != null ? t.overdueFg   : def[3],
+            t.completedBg != null ? t.completedBg : def[4],
+            t.completedFg != null ? t.completedFg : def[5]
+        };
+    }
+
     // ════════════════════════════════════════════════════════════════════════
-    // Public populate — called every time the settings panel is opened
+    // Public populate
     // ════════════════════════════════════════════════════════════════════════
     public void populate(User user) {
-        // Read-only display values
         lblRoId.setText(String.valueOf(user.getId()));
         lblRoUsername.setText("@" + user.getUsername());
         lblRoFullName.setText(user.getFullname());
-
-        // Editable fields
         txtEmail.setText(user.getEmail());
         txtJobTitle.setText(user.getJobTitle() != null ? user.getJobTitle() : "");
-
-        // Clear password fields and status messages
         txtCurrentPwd.setText(""); txtNewPwd.setText(""); txtConfirmPwd.setText("");
         lblProfileStatus.setText(" "); lblPwdStatus.setText(" ");
-
-        // Seed advanced editor with current theme if not already set
         if (advancedDraft == null) advancedDraft = AppTheme.getCurrentTheme().clone();
         if (txtThemeName != null && txtThemeName.getText().isBlank() && !AppTheme.getCurrentTheme().builtIn)
             txtThemeName.setText(AppTheme.getCurrentTheme().name);
@@ -638,11 +791,12 @@ public class SettingsPanel extends JPanel {
     }
 
     // ── Getters used by SettingsController ────────────────────────────────────
-    public String getEmail()      { return txtEmail.getText().trim(); }
-    public String getJobTitle()   { return txtJobTitle.getText().trim(); }
-    public String getCurrentPwd() { return new String(txtCurrentPwd.getPassword()).trim(); }
-    public String getNewPwd()     { return new String(txtNewPwd.getPassword()).trim(); }
-    public String getConfirmPwd() { return new String(txtConfirmPwd.getPassword()).trim(); }
+    public String getEmail()            { return txtEmail.getText().trim(); }
+    public String getJobTitle()         { return txtJobTitle.getText().trim(); }
+    public String getCurrentPwd()       { return new String(txtCurrentPwd.getPassword()).trim(); }
+    public String getNewPwd()           { return new String(txtNewPwd.getPassword()).trim(); }
+    public String getConfirmPwd()       { return new String(txtConfirmPwd.getPassword()).trim(); }
+    public SettingsController getController() { return controller; }
 
     public void setProfileStatus(String msg, boolean ok) {
         lblProfileStatus.setForeground(ok ? AppTheme.SUCCESS : AppTheme.DANGER);
@@ -674,6 +828,12 @@ public class SettingsPanel extends JPanel {
         h.setBorder(new EmptyBorder(0,0,14,0));
         p.add(h);
         return p;
+    }
+
+    private JLabel wrapMuted(String text) {
+        JLabel l = AppTheme.muted(text);
+        l.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return l;
     }
 
     private void addField(JPanel card, String label, JComponent field) {

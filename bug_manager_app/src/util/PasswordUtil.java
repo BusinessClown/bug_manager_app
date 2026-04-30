@@ -33,9 +33,9 @@ public class PasswordUtil {
 
 	public static boolean verify(String plainPassword, String storedHash) {
 //		 Legacy plain-text password (no ":" separator) — accept it as-is
-		if (!storedHash.contains(":")) {
-			return plainPassword.equals(storedHash);
-		}
+		//if (!storedHash.contains(":")) {
+		//	return plainPassword.equals(storedHash);
+		//}
 		String[] parts = storedHash.split(":", 2);
 		byte[] salt = Base64.getDecoder().decode(parts[0]);
 		byte[] expected = Base64.getDecoder().decode(parts[1]);

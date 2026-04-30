@@ -36,6 +36,14 @@ public class ThemeDefinition implements Cloneable {
     public Color tableAlt;   // alternate table row
     public Color tableSel;   // selected table row
 
+    // ── Row state colours ───────────────────────────────────────────────────────
+    public Color closedBg;     // background for bugs in closed projects
+    public Color closedFg;     // text colour for bugs in closed projects
+    public Color overdueBg;    // background for overdue (non-completed) bugs
+    public Color overdueFg;    // text colour for overdue bugs
+    public Color completedBg;  // background for completed bugs
+    public Color completedFg;  // text colour for completed bugs
+
     public ThemeDefinition() {}
 
     public ThemeDefinition(String name, boolean builtIn,
@@ -60,6 +68,13 @@ public class ThemeDefinition implements Cloneable {
         this.borderColor = borderColor;
         this.tableAlt    = tableAlt;
         this.tableSel    = tableSel;
+        // Row state defaults
+        this.closedBg    = c(0,   0,   0);
+        this.closedFg    = c(255, 120, 120);
+        this.overdueBg   = c(90,  20,  20);
+        this.overdueFg   = c(255, 120, 120);
+        this.completedBg = c(20,  60,  30);
+        this.completedFg = c(80,  200, 120);
     }
 
     @Override
@@ -82,12 +97,19 @@ public class ThemeDefinition implements Cloneable {
     }
 
     public static ThemeDefinition LIGHT() {
-        return new ThemeDefinition("Light", true,
+        ThemeDefinition t = new ThemeDefinition("Light", true,
             c(245,246,250), c(255,255,255), c(237,239,246), c(228,230,242),
             c(80,110,230),  c(60,90,210),
             c(200,50,50),   c(40,160,80),   c(200,130,20),
             c(30,32,50),    c(110,115,145),
             c(200,202,215), c(242,244,252), c(180,200,255));
+        t.closedBg    = c(220, 220, 220);
+        t.closedFg    = c(160,  60,  60);
+        t.overdueBg   = c(255, 220, 220);
+        t.overdueFg   = c(180,  30,  30);
+        t.completedBg = c(210, 245, 220);
+        t.completedFg = c( 30, 130,  60);
+        return t;
     }
 
     public static ThemeDefinition MIDNIGHT() {

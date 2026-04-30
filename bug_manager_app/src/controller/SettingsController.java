@@ -19,12 +19,18 @@ public class SettingsController {
     private final UserDaoImplementation userDao     = new UserDaoImplementation();
     private final UserService           userService = new UserService(userDao);
 
+    /**
+     * The last *saved* theme before any preview was applied.
+     * Null means no preview is active.
+     */
+    private ThemeDefinition lastSavedTheme = null;
+
     public SettingsController(SettingsPanel panel, BugListView parentView) {
         this.panel      = panel;
         this.parentView = parentView;
     }
 
-    // ── Profile (email + job title only — full name / username are read-only) ──
+    // ── Profile ────────────────────────────────────────────────────────────────
     public void onSaveProfile() {
         User   user  = parentView.getLoggedInUser();
         String email = panel.getEmail();
@@ -37,17 +43,15 @@ public class SettingsController {
             panel.setProfileStatus("Email must be in the format: example@domain.com", false); return;
         }
 
-        // Pass the existing immutable fields through unchanged
         String error = userService.adminUpdateUser(
             user,
-            user.getFullname(),   // read-only — unchanged
-            user.getUsername(),   // read-only — unchanged
+            user.getFullname(),
+            user.getUsername(),
             email,
             user.isAdmin(),
             job);
 
         if (error != null) { panel.setProfileStatus(error, false); return; }
-
         panel.setProfileStatus("Profile updated.", true);
     }
 
@@ -79,14 +83,41 @@ public class SettingsController {
 
         String hashed = PasswordUtil.hash(newPwd);
         userDao.updatePassword(user.getId(), hashed);
-        user.setPassword(hashed); // keep in-session object in sync
+        user.setPassword(hashed);
         panel.setPwdStatus("Password changed successfully.", true);
     }
 
     // ── Theme selection ────────────────────────────────────────────────────────
     public void onSelectTheme(ThemeDefinition theme) {
+        lastSavedTheme = null; // a real selection clears the preview state
         UserPreferences.saveActiveTheme(theme);
         rebuildWithTheme(theme, SettingsPanel.CARD_THEME);
+    }
+
+    // ── Preview (does NOT update lastSavedTheme / prefs) ──────────────────────
+    /**
+     * Apply a draft theme visually without saving it as the active preference.
+     * Records the current saved theme so Stop Preview can restore it.
+     */
+    public void onPreviewTheme(ThemeDefinition draft) {
+        if (lastSavedTheme == null) {
+            // Snapshot the currently saved theme before the first preview
+            lastSavedTheme = AppTheme.getCurrentTheme();
+        }
+        rebuildWithTheme(draft, SettingsPanel.CARD_ADVANCED);
+    }
+
+    /** True when a preview is in progress (i.e. last saved theme differs from current). */
+    public boolean isPreviewActive() {
+        return lastSavedTheme != null;
+    }
+
+    /** Restore the last saved theme, cancelling the preview. */
+    public void onStopPreview() {
+        if (lastSavedTheme == null) return;
+        ThemeDefinition restore = lastSavedTheme;
+        lastSavedTheme = null;
+        rebuildWithTheme(restore, SettingsPanel.CARD_ADVANCED);
     }
 
     // ── Custom theme CRUD ──────────────────────────────────────────────────────
@@ -97,6 +128,7 @@ public class SettingsController {
         draft.builtIn = false;
         UserPreferences.saveCustomTheme(draft);
         UserPreferences.saveActiveTheme(draft);
+        lastSavedTheme = null; // saved — no longer a preview
         panel.setAdvancedStatus("Theme \"" + draft.name + "\" saved.", true);
         rebuildWithTheme(draft, SettingsPanel.CARD_THEME);
     }
@@ -105,18 +137,27 @@ public class SettingsController {
         UserPreferences.deleteCustomTheme(theme.name);
         ThemeDefinition fallback = ThemeDefinition.DARK();
         UserPreferences.saveActiveTheme(fallback);
+        lastSavedTheme = null;
         rebuildWithTheme(fallback, SettingsPanel.CARD_THEME);
     }
 
     // ── Rebuild window with new theme ──────────────────────────────────────────
     public void rebuildWithTheme(ThemeDefinition t, String openCard) {
         AppTheme.apply(t);
+        // Pass the preview state into the new window via a flag on the new controller
+        boolean previewActive = (lastSavedTheme != null);
+        ThemeDefinition savedSnapshot = lastSavedTheme;
         User user = parentView.getLoggedInUser();
         SwingUtilities.invokeLater(() -> {
             parentView.dispose();
             BugListView fresh = new BugListView(user);
             fresh.setVisible(true);
             fresh.showSettingsPanel(openCard);
+            // Restore preview state into the new window's controller
+            if (previewActive && savedSnapshot != null) {
+                fresh.getSettingsPanel().getController().lastSavedTheme = savedSnapshot;
+            }
+            fresh.updateStopPreviewButton(previewActive);
         });
     }
 }

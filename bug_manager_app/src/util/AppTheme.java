@@ -35,6 +35,13 @@ public final class AppTheme {
         BORDER_COLOR = t.borderColor;
         TABLE_ALT    = t.tableAlt;
         TABLE_SEL    = t.tableSel;
+        // Row state colours — null-safe fallback to defaults
+        CLOSED_BG    = t.closedBg    != null ? t.closedBg    : new Color(0,   0,   0);
+        CLOSED_FG    = t.closedFg    != null ? t.closedFg    : new Color(255, 120, 120);
+        OVERDUE_BG   = t.overdueBg   != null ? t.overdueBg   : new Color(90,  20,  20);
+        OVERDUE_FG   = t.overdueFg   != null ? t.overdueFg   : new Color(255, 120, 120);
+        COMPLETED_BG = t.completedBg != null ? t.completedBg : new Color(20,  60,  30);
+        COMPLETED_FG = t.completedFg != null ? t.completedFg : new Color(80,  200, 120);
         refreshBorders();
     }
 
@@ -53,6 +60,14 @@ public final class AppTheme {
     public static Color BORDER_COLOR = new Color( 50,  53,  68);
     public static Color TABLE_ALT    = new Color( 40,  43,  56);
     public static Color TABLE_SEL    = new Color( 60,  80, 160);
+
+    // ── Row state colours (mutable) ───────────────────────────────────────────
+    public static Color CLOSED_BG    = new Color(0,   0,   0);
+    public static Color CLOSED_FG    = new Color(255, 120, 120);
+    public static Color OVERDUE_BG   = new Color(90,  20,  20);
+    public static Color OVERDUE_FG   = new Color(255, 120, 120);
+    public static Color COMPLETED_BG = new Color(20,  60,  30);
+    public static Color COMPLETED_FG = new Color(80,  200, 120);
 
     // ── Borders ────────────────────────────────────────────────────────────────
     public static Border BORDER_PANEL = BorderFactory.createLineBorder(BORDER_COLOR, 1);
@@ -81,6 +96,9 @@ public final class AppTheme {
     }
     public static JButton secondaryButton(String text) {
         return styledButton(text, BG_PANEL,  TEXT_PRIMARY);
+    }
+    public static JButton warningButton(String text) {
+        return styledButton(text, new Color(160, 100, 0), java.awt.Color.WHITE);
     }
 
     private static JButton styledButton(String text, Color bg, Color fg) {

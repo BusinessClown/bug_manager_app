@@ -7,15 +7,6 @@ import java.util.*;
 /**
  * Saves and loads theme preferences + custom theme definitions
  * to ~/.bugtracker_prefs.properties between sessions.
- *
- * Custom themes are serialised as:
- *   custom.N.name       = My Theme
- *   custom.N.bgDark     = #1C1E26
- *   custom.N.bgPanel    = ...  (14 colour keys)
- *
- * Active theme is stored as:
- *   theme.active = Dark              (built-in name)
- *   theme.active = custom:My Theme   (custom theme)
  */
 public class UserPreferences {
 
@@ -24,13 +15,20 @@ public class UserPreferences {
 
     private static final Properties PROPS = new Properties();
 
-    // Keys that map to ThemeDefinition colour fields (in order)
+    // Keys that map to ThemeDefinition colour fields (in order) — base 14
     private static final String[] COLOR_KEYS = {
         "bgDark","bgPanel","bgSidebar","bgHeader",
         "accent","accentHover",
         "danger","success","warning",
         "textPrimary","textMuted",
         "borderColor","tableAlt","tableSel"
+    };
+
+    // Additional row-state keys
+    private static final String[] STATE_KEYS = {
+        "closedBg","closedFg",
+        "overdueBg","overdueFg",
+        "completedBg","completedFg"
     };
 
     static { load(); }
@@ -52,7 +50,6 @@ public class UserPreferences {
 
     // ── Active theme ───────────────────────────────────────────────────────────
 
-    /** Save whichever theme is now active. */
     public static void saveActiveTheme(ThemeDefinition t) {
         if (t.builtIn) {
             PROPS.setProperty("theme.active", t.name);
@@ -63,10 +60,6 @@ public class UserPreferences {
         save();
     }
 
-    /**
-     * Reconstruct the saved active theme.
-     * Falls back to Dark if anything is missing / corrupt.
-     */
     public static ThemeDefinition loadActiveTheme(List<ThemeDefinition> customThemes) {
         String active = PROPS.getProperty("theme.active", "Dark");
         if (active.startsWith("custom:")) {
@@ -74,7 +67,6 @@ public class UserPreferences {
             for (ThemeDefinition c : customThemes)
                 if (c.name.equals(cname)) return c;
         }
-        // Search built-ins by name
         for (ThemeDefinition b : ThemeDefinition.builtIns())
             if (b.name.equals(active)) return b;
         return ThemeDefinition.DARK();
@@ -104,6 +96,13 @@ public class UserPreferences {
             t.borderColor = hex(prefix + "borderColor", new Color(50,53,68));
             t.tableAlt    = hex(prefix + "tableAlt",    new Color(40,43,56));
             t.tableSel    = hex(prefix + "tableSel",    new Color(60,80,160));
+            // Row state colours
+            t.closedBg    = hex(prefix + "closedBg",    new Color(0,   0,   0));
+            t.closedFg    = hex(prefix + "closedFg",    new Color(255, 120, 120));
+            t.overdueBg   = hex(prefix + "overdueBg",   new Color(90,  20,  20));
+            t.overdueFg   = hex(prefix + "overdueFg",   new Color(255, 120, 120));
+            t.completedBg = hex(prefix + "completedBg", new Color(20,  60,  30));
+            t.completedFg = hex(prefix + "completedFg", new Color(80,  200, 120));
             list.add(t);
             i++;
         }
@@ -111,7 +110,6 @@ public class UserPreferences {
     }
 
     public static void saveCustomTheme(ThemeDefinition t) {
-        // Find or assign slot
         int slot = findCustomSlot(t.name);
         String prefix = "custom." + slot + ".";
         PROPS.setProperty(prefix + "name",        t.name);
@@ -129,6 +127,13 @@ public class UserPreferences {
         PROPS.setProperty(prefix + "borderColor", AppTheme.toHex(t.borderColor));
         PROPS.setProperty(prefix + "tableAlt",    AppTheme.toHex(t.tableAlt));
         PROPS.setProperty(prefix + "tableSel",    AppTheme.toHex(t.tableSel));
+        // Row state colours
+        if (t.closedBg    != null) PROPS.setProperty(prefix + "closedBg",    AppTheme.toHex(t.closedBg));
+        if (t.closedFg    != null) PROPS.setProperty(prefix + "closedFg",    AppTheme.toHex(t.closedFg));
+        if (t.overdueBg   != null) PROPS.setProperty(prefix + "overdueBg",   AppTheme.toHex(t.overdueBg));
+        if (t.overdueFg   != null) PROPS.setProperty(prefix + "overdueFg",   AppTheme.toHex(t.overdueFg));
+        if (t.completedBg != null) PROPS.setProperty(prefix + "completedBg", AppTheme.toHex(t.completedBg));
+        if (t.completedFg != null) PROPS.setProperty(prefix + "completedFg", AppTheme.toHex(t.completedFg));
         save();
     }
 
@@ -136,21 +141,21 @@ public class UserPreferences {
         int slot = findCustomSlot(name);
         String prefix = "custom." + slot + ".";
         if (!PROPS.containsKey(prefix + "name")) return;
-        // Remove all keys for this slot then compact slots above it
         int i = slot;
         while (true) {
             String next = "custom." + (i+1) + ".";
             if (!PROPS.containsKey(next + "name")) {
-                // Remove current slot
                 String cur = "custom." + i + ".";
-                for (String k : COLOR_KEYS)          PROPS.remove(cur + k);
+                for (String k : COLOR_KEYS) PROPS.remove(cur + k);
+                for (String k : STATE_KEYS) PROPS.remove(cur + k);
                 PROPS.remove(cur + "name");
                 break;
             }
-            // Shift next slot down
             String cur = "custom." + i + ".";
             PROPS.setProperty(cur + "name", PROPS.getProperty(next + "name"));
             for (String k : COLOR_KEYS)
+                PROPS.setProperty(cur + k, PROPS.getProperty(next + k, ""));
+            for (String k : STATE_KEYS)
                 PROPS.setProperty(cur + k, PROPS.getProperty(next + k, ""));
             i++;
         }
@@ -163,7 +168,7 @@ public class UserPreferences {
             if (PROPS.getProperty("custom." + i + ".name").equals(name)) return i;
             i++;
         }
-        return i; // new slot
+        return i;
     }
 
     private static Color hex(String key, Color fallback) {

@@ -4,6 +4,7 @@ import View.LoginView;
 import View.RegisterView;
 import dao.UserDaoImplementation;
 import service.UserService;
+import util.AppTheme;
 
 public class RegisterController {
 
@@ -29,6 +30,7 @@ public class RegisterController {
         }
 
         // Success — show message in status label then go back to login
+        registerView.getLblStatus().setForeground(AppTheme.SUCCESS);
         registerView.getLblStatus().setText("Registration successful! Please sign in.");
         javax.swing.Timer t = new javax.swing.Timer(1500, e -> {
             LoginView loginView = new LoginView();

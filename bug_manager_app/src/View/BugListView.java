@@ -22,6 +22,7 @@ public class BugListView extends JFrame {
     private JLabel  lblWelcome;
     private JButton btnMyBugs, btnAllBugs, btnAdminUsers, btnNewProject,
                     btnProjectMgmt, btnSettings, btnLogout;
+    private JButton btnStopPreview; // shown only while a preview is active
 
     // ── Sidebar ───────────────────────────────────────────────────────────────
     private DefaultListModel<String> sidebarModel = new DefaultListModel<>();
@@ -77,6 +78,9 @@ public class BugListView extends JFrame {
     private ProjectManagementPanel projectManagementPanel;
     private SettingsPanel          settingsPanel;
 
+    // ── Header right panel (kept for Stop Preview injection) ──────────────────
+    private JPanel headerRight;
+
     // ═════════════════════════════════════════════════════════════════════════
     public BugListView(User loggedInUser) {
         this.loggedInUser = loggedInUser;
@@ -114,55 +118,76 @@ public class BugListView extends JFrame {
         lblWelcome.setFont(AppTheme.FONT_BODY);
         lblWelcome.setForeground(AppTheme.TEXT_MUTED);
 
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        right.setOpaque(false);
+        headerRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        headerRight.setOpaque(false);
+
         btnMyBugs  = AppTheme.primaryButton("My Bugs");
         btnAllBugs = AppTheme.secondaryButton("All Bugs");
         btnMyBugs.addActionListener(e  -> { controller.loadMyBugs();  setMyBugsActive(true); });
         btnAllBugs.addActionListener(e -> { controller.loadAllBugs(); setMyBugsActive(false); });
-        right.add(lblWelcome);
-        right.add(Box.createHorizontalStrut(12));
-        right.add(btnMyBugs);
-        right.add(btnAllBugs);
+        headerRight.add(lblWelcome);
+        headerRight.add(Box.createHorizontalStrut(12));
+        headerRight.add(btnMyBugs);
+        headerRight.add(btnAllBugs);
 
         if (loggedInUser.isAdmin()) {
             btnAdminUsers = AppTheme.secondaryButton("User Management");
             btnAdminUsers.addActionListener(e -> showCard(CARD_USERS));
-            right.add(Box.createHorizontalStrut(8));
-            right.add(btnAdminUsers);
+            headerRight.add(Box.createHorizontalStrut(8));
+            headerRight.add(btnAdminUsers);
 
             btnProjectMgmt = AppTheme.secondaryButton("Project Management");
             btnProjectMgmt.addActionListener(e -> {
                 if (projectManagementPanel != null) projectManagementPanel.reload();
                 showCard(CARD_PROJ_MGMT);
             });
-            right.add(Box.createHorizontalStrut(8));
-            right.add(btnProjectMgmt);
+            headerRight.add(Box.createHorizontalStrut(8));
+            headerRight.add(btnProjectMgmt);
         }
 
         btnNewProject = AppTheme.primaryButton("+ New Project");
         btnNewProject.addActionListener(e -> controller.onNewProjectClick());
-        right.add(Box.createHorizontalStrut(8));
-        right.add(btnNewProject);
+        headerRight.add(Box.createHorizontalStrut(8));
+        headerRight.add(btnNewProject);
 
-        right.add(Box.createHorizontalStrut(16));
+        headerRight.add(Box.createHorizontalStrut(16));
         JSeparator sep = new JSeparator(JSeparator.VERTICAL);
         sep.setPreferredSize(new Dimension(1, 24));
         sep.setForeground(AppTheme.BORDER_COLOR);
-        right.add(sep);
-        right.add(Box.createHorizontalStrut(8));
+        headerRight.add(sep);
+        headerRight.add(Box.createHorizontalStrut(8));
 
         btnSettings = AppTheme.secondaryButton("⚙  Settings");
         btnSettings.addActionListener(e -> showSettingsPanel(SettingsPanel.CARD_USER));
-        right.add(btnSettings);
-        right.add(Box.createHorizontalStrut(8));
+        headerRight.add(btnSettings);
+        headerRight.add(Box.createHorizontalStrut(8));
 
         btnLogout = AppTheme.dangerButton("⏻  Log Out");
         btnLogout.addActionListener(e -> showLogoutDialog());
-        right.add(btnLogout);
+        headerRight.add(btnLogout);
 
-        h.add(logo,  BorderLayout.WEST);
-        h.add(right, BorderLayout.EAST);
+        // Stop Preview button — hidden by default, shown when preview is active
+        btnStopPreview = new JButton("⏹  Stop Preview");
+        btnStopPreview.setFont(AppTheme.FONT_BUTTON);
+        btnStopPreview.setBackground(new Color(160, 100, 0));
+        btnStopPreview.setForeground(Color.WHITE);
+        btnStopPreview.setFocusPainted(false);
+        btnStopPreview.setBorderPainted(false);
+        btnStopPreview.setOpaque(true);
+        btnStopPreview.setBorder(BorderFactory.createEmptyBorder(7, 16, 7, 16));
+        btnStopPreview.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnStopPreview.setToolTipText("Revert to the last saved theme");
+        btnStopPreview.addActionListener(e -> {
+            if (settingsPanel != null) {
+                settingsPanel.getController().onStopPreview();
+            }
+        });
+        btnStopPreview.setVisible(false);
+        headerRight.add(Box.createHorizontalStrut(8));
+        headerRight.add(btnStopPreview);
+
+        h.add(logo,        BorderLayout.WEST);
+        h.add(headerRight, BorderLayout.EAST);
         return h;
     }
 
@@ -343,7 +368,17 @@ public class BugListView extends JFrame {
 
     // ── Public API ────────────────────────────────────────────────────────────
 
-    /** Open settings and show the specified inner card (CARD_USER / CARD_THEME / CARD_ADVANCED). */
+    /**
+     * Show or hide the "Stop Preview" button in the header.
+     * Called by SettingsController after each rebuild.
+     */
+    public void updateStopPreviewButton(boolean previewActive) {
+        if (btnStopPreview != null) {
+            btnStopPreview.setVisible(previewActive);
+            if (headerRight != null) headerRight.revalidate();
+        }
+    }
+
     public void showSettingsPanel(String innerCard) {
         settingsPanel.populate(loggedInUser);
         settingsPanel.showInnerCard(innerCard);
@@ -378,10 +413,6 @@ public class BugListView extends JFrame {
         for (Bug b : bugs) sidebarModel.addElement(b.getTitle());
     }
 
-    /**
-     * Restores sidebar to whichever of My Bugs / All Bugs is active.
-     * Uses tableBugs so label + entries always match the main table.
-     */
     public void restoreSidebar() {
         boolean myBugs = controller != null && controller.isShowingMyBugs();
         sidebarLabel.setText(myBugs ? "  MY BUGS" : "  ALL BUGS");
@@ -405,7 +436,6 @@ public class BugListView extends JFrame {
         sidebarLabel.setText(myBugs ? "  MY BUGS" : "  ALL BUGS");
     }
 
-    /** Called by SettingsController after a successful profile save. */
     public void refreshWelcomeLabel() {
         if (lblWelcome != null) lblWelcome.setText(welcomeText());
     }
@@ -479,8 +509,10 @@ public class BugListView extends JFrame {
         JTable t = new JTable(model) {
             @Override public Component prepareRenderer(TableCellRenderer r, int row, int col) {
                 Component c = super.prepareRenderer(r, row, col);
-                if (isRowSelected(row)) { c.setBackground(AppTheme.TABLE_SEL); c.setForeground(java.awt.Color.WHITE); }
-                else {
+                if (isRowSelected(row)) {
+                    c.setBackground(AppTheme.TABLE_SEL);
+                    c.setForeground(java.awt.Color.WHITE);
+                } else {
                     c.setBackground(row%2==0 ? AppTheme.BG_PANEL : AppTheme.TABLE_ALT);
                     c.setForeground(AppTheme.TEXT_PRIMARY);
                 }
@@ -496,31 +528,53 @@ public class BugListView extends JFrame {
         JTable t = new JTable(model) {
             @Override public Component prepareRenderer(TableCellRenderer r, int row, int col) {
                 Component c = super.prepareRenderer(r, row, col);
-                if (isRowSelected(row)) { c.setBackground(AppTheme.TABLE_SEL); c.setForeground(java.awt.Color.WHITE); }
-                else {
-                    boolean closed=false, completed=false, overdue=false;
-                    if (self.tableBugs!=null && row<self.tableBugs.size()) {
-                        Bug b=self.tableBugs.get(row);
-                        closed=b.isInClosedProject(); completed=b.getStatus()==BugStatus.COMPLETED;
+                if (isRowSelected(row)) {
+                    c.setBackground(AppTheme.TABLE_SEL);
+                    c.setForeground(java.awt.Color.WHITE);
+                } else {
+                    boolean closed = false, completed = false, overdue = false;
+                    if (self.tableBugs != null && row < self.tableBugs.size()) {
+                        Bug b = self.tableBugs.get(row);
+                        closed    = b.isInClosedProject();
+                        completed = b.getStatus() == BugStatus.COMPLETED;
                     }
                     if (!closed && !completed) {
-                        Object sv=getValueAt(row,statusCol), dv=getValueAt(row,dueDateCol);
-                        if (sv!=null && !sv.toString().equals("COMPLETED") && dv!=null) {
-                            try { LocalDate d=dv instanceof LocalDate ld?ld:LocalDate.parse(dv.toString()); overdue=d.isBefore(LocalDate.now()); }
-                            catch(Exception ignored){}
+                        Object sv = getValueAt(row, statusCol);
+                        Object dv = getValueAt(row, dueDateCol);
+                        if (sv != null && !sv.toString().equals("COMPLETED") && dv != null) {
+                            try {
+                                LocalDate d = dv instanceof LocalDate ld ? ld : LocalDate.parse(dv.toString());
+                                overdue = d.isBefore(LocalDate.now());
+                            } catch (Exception ignored) {}
                         }
                     }
-                    if (closed&&completed){ c.setBackground(new Color(0,0,0));     c.setForeground(new Color(80,200,120)); }
-                    else if (closed)      { c.setBackground(new Color(0,0,0));     c.setForeground(new Color(255,120,120)); }
-                    else if (completed)   { c.setBackground(new Color(20,60,30));  c.setForeground(new Color(80,200,120)); }
-                    else if (overdue)     { c.setBackground(new Color(90,20,20));  c.setForeground(new Color(255,120,120)); }
-                    else { c.setBackground(row%2==0?AppTheme.BG_PANEL:AppTheme.TABLE_ALT); c.setForeground(AppTheme.TEXT_PRIMARY); }
+                    applyRowColors(c, closed, completed, overdue, row);
                 }
                 if (c instanceof JLabel jl) jl.setBorder(new EmptyBorder(4,10,4,10));
                 return c;
             }
         };
         styleTable(t); return t;
+    }
+
+    /** Central method for applying row state colours — reads from AppTheme so it's always live. */
+    static void applyRowColors(Component c, boolean closed, boolean completed, boolean overdue, int row) {
+        if (closed && completed) {
+            c.setBackground(AppTheme.CLOSED_BG);
+            c.setForeground(AppTheme.COMPLETED_FG); // completed takes text precedence in closed+done
+        } else if (closed) {
+            c.setBackground(AppTheme.CLOSED_BG);
+            c.setForeground(AppTheme.CLOSED_FG);
+        } else if (completed) {
+            c.setBackground(AppTheme.COMPLETED_BG);
+            c.setForeground(AppTheme.COMPLETED_FG);
+        } else if (overdue) {
+            c.setBackground(AppTheme.OVERDUE_BG);
+            c.setForeground(AppTheme.OVERDUE_FG);
+        } else {
+            c.setBackground(row % 2 == 0 ? AppTheme.BG_PANEL : AppTheme.TABLE_ALT);
+            c.setForeground(AppTheme.TEXT_PRIMARY);
+        }
     }
 
     private static void styleTable(JTable t) {
@@ -547,20 +601,25 @@ public class BugListView extends JFrame {
     }
 
     private class SidebarRenderer extends DefaultListCellRenderer {
-        @Override public Component getListCellRendererComponent(JList<?> list,Object value,int index,boolean sel,boolean focus){
-            JLabel l=(JLabel)super.getListCellRendererComponent(list,value,index,sel,focus);
+        @Override public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean sel, boolean focus) {
+            JLabel l = (JLabel) super.getListCellRendererComponent(list, value, index, sel, focus);
             l.setBorder(new EmptyBorder(10,14,10,10)); l.setFont(AppTheme.FONT_SMALL);
-            boolean closed=false,completed=false,overdue=false;
-            if(sidebarBugs!=null&&index<sidebarBugs.size()){
-                Bug b=sidebarBugs.get(index);
-                closed=b.isInClosedProject(); completed=b.getStatus()==model.BugStatus.COMPLETED; overdue=b.isOverdue();
+            boolean closed = false, completed = false, overdue = false;
+            if (sidebarBugs != null && index < sidebarBugs.size()) {
+                Bug b = sidebarBugs.get(index);
+                closed    = b.isInClosedProject();
+                completed = b.getStatus() == model.BugStatus.COMPLETED;
+                overdue   = b.isOverdue();
             }
-            if(sel){l.setBackground(AppTheme.TABLE_SEL);l.setForeground(java.awt.Color.WHITE);}
-            else if(closed&&completed){l.setBackground(new Color(0,0,0));l.setForeground(new Color(80,200,120));}
-            else if(closed){l.setBackground(new Color(0,0,0));l.setForeground(new Color(255,120,120));}
-            else if(completed){l.setBackground(new Color(20,60,30));l.setForeground(new Color(80,200,120));}
-            else if(overdue){l.setBackground(new Color(90,20,20));l.setForeground(new Color(255,120,120));}
-            else{l.setBackground(AppTheme.BG_SIDEBAR);l.setForeground(AppTheme.TEXT_PRIMARY);}
+            if (sel) {
+                l.setBackground(AppTheme.TABLE_SEL);
+                l.setForeground(java.awt.Color.WHITE);
+            } else {
+                applyRowColors(l, closed, completed, overdue, index);
+                // Sidebar uses its own base bg when uncolored
+                if (!closed && !completed && !overdue)
+                    l.setBackground(AppTheme.BG_SIDEBAR);
+            }
             return l;
         }
     }
