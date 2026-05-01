@@ -21,7 +21,7 @@ SET @@SESSION.SQL_LOG_BIN= 0;
 -- GTID state at the beginning of the backup 
 --
 
-SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ '4f3a307a-2477-11f1-b987-a4bb6d530278:1-166';
+SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ '4f3a307a-2477-11f1-b987-a4bb6d530278:1-203';
 
 --
 -- Table structure for table `projects`
@@ -36,7 +36,7 @@ CREATE TABLE `projects` (
   `status` enum('OPEN','CLOSED') NOT NULL DEFAULT 'OPEN',
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -45,7 +45,7 @@ CREATE TABLE `projects` (
 
 LOCK TABLES `projects` WRITE;
 /*!40000 ALTER TABLE `projects` DISABLE KEYS */;
-INSERT INTO `projects` VALUES (1,'Bug Tracker','OPEN'),(4,'minecraft mod the panda overlord','CLOSED');
+INSERT INTO `projects` VALUES (1,'Bug Tracker','OPEN'),(4,'minecraft mod the panda overlord','CLOSED'),(5,'LLM Project','OPEN'),(6,'minecraft','OPEN');
 /*!40000 ALTER TABLE `projects` ENABLE KEYS */;
 UNLOCK TABLES;
 SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
@@ -59,4 +59,4 @@ SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-04-17 10:08:29
+-- Dump completed on 2026-05-01  9:43:42
